@@ -232,6 +232,9 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 	//carry over old huffman tree if no new one is included
 	if ls.Header.Type == LiteralsBlockTypeTreeless {
 		ls.DecodingTable = prevBlock.Literals.DecodingTable
+		if ls.DecodingTable == nil {
+			return errors.New("No previous Huffmantree available")
+		}
 	}
 
 	if ls.Header.Type == LiteralsBlockTypeCompressed {

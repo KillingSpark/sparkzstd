@@ -218,8 +218,18 @@ func (fd *FrameDecompressor) DecodeNextBlockHeader() error {
 	newBlock := structure.Block{}
 	err := newBlock.DecodeHeader(buf)
 
-	if fd.CurrentBlock.Header.Type != structure.BlockTypeCompressed {
-		fd.PreviousBlock = fd.CurrentBlock
+	//carry over any decoding tables from the old current block
+	if fd.CurrentBlock.Sequences.LiteralLengthsFSEDecodingTable != nil {
+		fd.PreviousBlock.Sequences.LiteralLengthsFSEDecodingTable = fd.CurrentBlock.Sequences.LiteralLengthsFSEDecodingTable
+	}
+	if fd.CurrentBlock.Sequences.MatchLengthsFSEDecodingTable != nil {
+		fd.PreviousBlock.Sequences.MatchLengthsFSEDecodingTable = fd.CurrentBlock.Sequences.MatchLengthsFSEDecodingTable
+	}
+	if fd.CurrentBlock.Sequences.OffsetsFSEDecodingTable != nil {
+		fd.PreviousBlock.Sequences.OffsetsFSEDecodingTable = fd.CurrentBlock.Sequences.OffsetsFSEDecodingTable
+	}
+	if fd.CurrentBlock.Literals.DecodingTable != nil {
+		fd.PreviousBlock.Literals.DecodingTable = fd.CurrentBlock.Literals.DecodingTable
 	}
 	fd.CurrentBlock = newBlock
 	return err
