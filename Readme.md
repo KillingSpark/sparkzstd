@@ -11,7 +11,7 @@ The goal is to provide a io.Reader compatible API for reading zstd encoded data 
 1. Frame/Block/Literals/Sequences and their decoding is in /structure (Some HeaderDecoding is happening in the /decompression/framedecompressor.go)
 2. Actual decompression aka. SequenceExecution is in /decompression/sequence_execution.go and /decompression/ringbuffer.go
 3. FSE related stuff like predefined tables etc. are in /fse/predefined
-4. All operations that need to read bits out of a bitstream or even a reversed bitstream are located in /bitsream
+4. Helpers for operations that need to read bits out of a bitstream or a reversed bitstream are located in /bitstream
 
 ## What is still missing
 Generally all concepts of the Format have been implemented and are working (to a degree, some subtle bugs are still there)
