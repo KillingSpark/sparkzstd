@@ -17,7 +17,7 @@ The goal is to provide a io.Reader compatible API for reading zstd encoded data 
 Generally all concepts of the Format have been implemented and are working (to a degree, some subtle bugs are still there)
 1. Good benchmarks
 2. Better doc
-3. Bugfixing
+3. More bugs (I do have some unit tests and did some manual testing but you know...)
 
 ## Which bugs are known
 I am testing this on a few files right know
