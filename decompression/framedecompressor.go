@@ -15,6 +15,9 @@ type FrameDecompressor struct {
 	source *bufio.Reader
 	target io.Writer
 
+	//will be limited to the CurrentBlocks size and given to the decoding functions
+	limitedSource *io.LimitedReader
+
 	decodebuffer    *Ringbuffer //must be at least frame.Header.WindowSize long. Will be used in decoding the CurrentBlock
 	offsetHistory   [3]int64
 	literalsCopyBuf [128 * 1024]byte //can only be max 128kb. Allocate here once instead of for every block
@@ -66,7 +69,8 @@ func (fd *FrameDecompressor) printStatus(target io.Writer) error {
 
 //DecodeNextBlockContent decodes the literal and sequence section of the current block
 func (fd *FrameDecompressor) DecodeNextBlockContent() error {
-	err := fd.CurrentBlock.Literals.DecodeNextLiteralsSection(fd.source, &fd.PreviousBlock)
+	bufsrc := bufio.NewReader(fd.limitedSource)
+	err := fd.CurrentBlock.Literals.DecodeNextLiteralsSection(bufsrc, &fd.PreviousBlock)
 	if fd.Verbose {
 		fd.printCurrentBlockLiterals()
 	}
@@ -77,7 +81,7 @@ func (fd *FrameDecompressor) DecodeNextBlockContent() error {
 	bytesUsedByLiterals := uint64(fd.CurrentBlock.Literals.Header.CompressedSize + fd.CurrentBlock.Literals.Header.BytesUsedByHeader + fd.CurrentBlock.Literals.BytesUsedByTree)
 	bytesLeft := fd.CurrentBlock.Header.BlockSize - bytesUsedByLiterals
 
-	err = fd.CurrentBlock.Sequences.DecodeNextSequenceSection(fd.source, int(bytesLeft), &fd.PreviousBlock)
+	err = fd.CurrentBlock.Sequences.DecodeNextSequenceSection(bufsrc, int(bytesLeft), &fd.PreviousBlock)
 	if fd.Verbose {
 		fd.printCurrentBlockSequences()
 	}
@@ -87,6 +91,12 @@ func (fd *FrameDecompressor) DecodeNextBlockContent() error {
 
 	bytesUsedWhileDecoding := int(bytesUsedByLiterals) + len(fd.CurrentBlock.Sequences.Data) + fd.CurrentBlock.Sequences.Header.BytesUsedByHeader
 	if uint64(bytesUsedWhileDecoding) != fd.CurrentBlock.Header.BlockSize {
+		panic("Corrupt sizes!")
+	}
+	if bytesUsedWhileDecoding != int(fd.CurrentBlock.Header.BlockSize) {
+		panic("Corrupt sizes!")
+	}
+	if fd.limitedSource.N != 0 {
 		panic("Corrupt sizes!")
 	}
 
@@ -172,6 +182,7 @@ func (fd *FrameDecompressor) decodeAllBlocks() error {
 				panic("Not enough bytes copied")
 			}
 		} else {
+			fd.limitedSource = &io.LimitedReader{R: fd.source, N: int64(fd.CurrentBlock.Header.BlockSize)}
 			err = fd.DecodeNextBlockContent()
 
 			if err != nil {
