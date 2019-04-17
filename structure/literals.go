@@ -283,8 +283,9 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 
 	//decompress if necessary
 	if ls.Header.Type == LiteralsBlockTypeCompressed || ls.Header.Type == LiteralsBlockTypeTreeless {
+		output := make([]byte, ls.Header.RegeneratedSize)
+
 		if ls.Header.NumberOfStreams == 1 {
-			output := make([]byte, ls.Header.RegeneratedSize)
 			_, err := ls.DecodingTable.DecodeStream(ls.Data, output)
 			if err != nil {
 				return err
@@ -292,11 +293,11 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 			ls.Data = output
 		} else {
 			normalSize := (ls.Header.RegeneratedSize + 3) / 4
-			//lastSize := ls.Header.RegeneratedSize - 3*normalSize
-			output1 := make([]byte, normalSize)
-			output2 := make([]byte, normalSize)
-			output3 := make([]byte, normalSize)
-			output4 := make([]byte, normalSize)
+			lastSize := ls.Header.RegeneratedSize - 3*normalSize
+			output1 := output[normalSize*0 : normalSize*1]
+			output2 := output[normalSize*1 : normalSize*2]
+			output3 := output[normalSize*2 : normalSize*3]
+			output4 := output[normalSize*3 : normalSize*3+lastSize]
 
 			low := 0
 			high := int(ls.Header.StreamSize1)
@@ -356,11 +357,7 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 				panic("Streams decoded combined didnt have correct length")
 			}
 
-			ls.Data = make([]byte, ls.Header.RegeneratedSize)
-			copy(ls.Data, output1[:bytes1])
-			copy(ls.Data[bytes1:], output2[:bytes2])
-			copy(ls.Data[bytes1+bytes2:], output3[:bytes4])
-			copy(ls.Data[bytes1+bytes2+bytes3:], output4[:bytes4])
+			ls.Data = output
 		}
 	}
 
