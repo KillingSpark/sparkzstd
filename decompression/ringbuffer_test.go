@@ -2,6 +2,7 @@ package decompression
 
 import (
 	"bytes"
+	"math/rand"
 	"testing"
 )
 
@@ -150,4 +151,167 @@ func TestRepeat(t *testing.T) {
 		t.Errorf("Pushed out: %s but should be: %s", result, "678")
 	}
 	resultbuf.Reset()
+}
+
+func TestRandomPushes(t *testing.T) {
+	resultbuf := &bytes.Buffer{}
+	rb := NewRingbuffer(100, resultbuf)
+	pushed := 0
+	for i := 0; i < 10000; i++ {
+
+		toPush := make([]byte, rand.Intn(rb.Len))
+		for idx := range toPush {
+			//for convenience take only ascii characters, so error messages dont completly destroy your terminal
+			toPush[idx] = 33 + byte(rand.Intn(127-33))
+		}
+
+		offsetbefore := rb.offset
+		before := []byte(rb.String())
+		resultbuf.Reset()
+
+		err := rb.Push(toPush)
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		out := resultbuf.Bytes()
+
+		if rb.offset != (offsetbefore+len(toPush))%rb.Len {
+			t.Errorf("Offset is: %d should: %d", rb.offset, (offsetbefore+len(toPush))%rb.Len)
+		}
+
+		if pushed > rb.Len {
+			//length of pushed out must match length of pushed in
+			should := len(toPush)
+			if len(out) != should {
+				t.Errorf("Not right amount pushed out: %d should be: %d", len(out), should)
+				return
+			}
+			for j := 0; j < should; j++ {
+				if out[j] != before[j] {
+					t.Errorf("At Push/Index: %d/%d, Pushed out: %b when it should have pushed out: %b", i, j, out[j], before[j])
+					return
+				}
+			}
+		}
+		if pushed <= rb.Len && pushed+len(toPush) > rb.Len {
+			//length of pushed out must match difference
+			should := (pushed + len(toPush)) - rb.Len
+			if len(out) != should {
+				t.Errorf("Not right amount pushed out: %d should be: %d", len(out), should)
+				return
+			}
+			for j := 0; j < should; j++ {
+				if out[j] != before[j] {
+					t.Errorf("At Push/Index: %d/%d, Pushed out: %b when it should have pushed out: %b", i, j, out[j], before[j])
+					return
+				}
+			}
+		}
+		if pushed <= rb.Len && pushed+len(toPush) <= rb.Len {
+			//lenght of pushed out must be zero
+			should := 0
+			if len(out) != should {
+				t.Errorf("Not right amount pushed out: %d should be: %d", len(out), should)
+				return
+			}
+		}
+		pushed += len(toPush)
+	}
+}
+
+func TestRandomRepeates(t *testing.T) {
+	resultbuf := &bytes.Buffer{}
+	rb := NewRingbuffer(100, resultbuf)
+
+	initial := make([]byte, 50)
+	for idx := range initial {
+		//for convenience take only ascii characters, so error messages dont completly destroy your terminal
+		initial[idx] = 33 + byte(rand.Intn(127-33))
+	}
+	err := rb.Push(initial)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	pushed := len(initial)
+
+	for i := 0; i < 10000; i++ {
+		var toRepeat int
+		toRepeat = rand.Intn(rb.Len)
+
+		var oldest int
+		if rb.allDirty {
+			oldest = rand.Intn(rb.Len)
+		} else {
+			oldest = rand.Intn(rb.offset)
+		}
+
+		offsetbefore := rb.offset
+		before := []byte(rb.String())
+		resultbuf.Reset()
+
+		rb.RepeatBeforeIndex(toRepeat, oldest)
+
+		out := resultbuf.Bytes()
+		after := []byte(rb.String())
+
+		if rb.offset != (offsetbefore+toRepeat)%rb.Len {
+			t.Errorf("Offset is: %d should: %d", rb.offset, (offsetbefore+toRepeat)%rb.Len)
+		}
+
+		startOfRepeated := len(after) - toRepeat
+		startOfToBeRepated := len(after) - toRepeat - oldest
+
+		startOfCompare := 0
+		if startOfToBeRepated < 0 {
+			startOfCompare = -startOfToBeRepated
+		}
+
+		for j := startOfCompare; j < toRepeat; j++ {
+			x := after[startOfRepeated+j]
+			y := after[startOfToBeRepated+j]
+			if x != y {
+				t.Errorf("Wrong byte repeated: %d: %d, %d", j, x, y)
+			}
+		}
+
+		if pushed > rb.Len {
+			//length of pushed out must match length of pushed in
+			should := toRepeat
+			if len(out) != should {
+				t.Errorf("Not right amount pushed out: %d should be: %d", len(out), should)
+				return
+			}
+			for j := 0; j < should; j++ {
+				if out[j] != before[j] {
+					t.Errorf("At Push/Index: %d/%d, Pushed out: %b when it should have pushed out: %b", i, j, out[j], before[j])
+					return
+				}
+			}
+		}
+		if pushed <= rb.Len && pushed+toRepeat > rb.Len {
+			//length of pushed out must match difference
+			should := (pushed + toRepeat) - rb.Len
+			if len(out) != should {
+				t.Errorf("Not right amount pushed out: %d should be: %d", len(out), should)
+				return
+			}
+			for j := 0; j < should; j++ {
+				if out[j] != before[j] {
+					t.Errorf("At Push/Index: %d/%d, Pushed out: %b when it should have pushed out: %b", i, j, out[j], before[j])
+					return
+				}
+			}
+		}
+		if pushed <= rb.Len && pushed+toRepeat <= rb.Len {
+			//lenght of pushed out must be zero
+			should := 0
+			if len(out) != should {
+				t.Errorf("Not right amount pushed out: %d should be: %d", len(out), should)
+				return
+			}
+		}
+		pushed += toRepeat
+	}
 }

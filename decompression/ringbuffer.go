@@ -21,7 +21,7 @@ type Ringbuffer struct {
 
 //NewRingbuffer creates a new Ringbuffer with the appropriatly sized buffer
 func NewRingbuffer(n int, dump io.Writer) *Ringbuffer {
-	return &Ringbuffer{data: make([]byte, n), repeatBuf: make([]byte, n), offset: 0, Len: n, Dump: dump}
+	return &Ringbuffer{data: make([]byte, n), repeatBuf: make([]byte, n), offset: 0, Len: n, Dump: dump, allDirty: false}
 }
 
 //ErrIdxOutOfBounds is returned if Get(X) x is bigger than rb.Len
@@ -77,6 +77,7 @@ func (rb *Ringbuffer) dumpAllDirty() error {
 //Push appends the new Data at the "end" of the buffer and dumps everything that would have been overwritten
 func (rb *Ringbuffer) Push(newdata []byte) error {
 
+	//deal with really large new data. Should not happen in zstd context
 	if len(newdata) >= rb.Len {
 		err := rb.dumpAllDirty()
 		if err != nil {
@@ -130,7 +131,6 @@ func (rb *Ringbuffer) Push(newdata []byte) error {
 
 	//then dump all data that would be overwritten by the rest of newdata
 	rest := newdata[spaceAboveOffset:]
-
 	err := rb.dump(0, len(rest))
 	if err != nil {
 		return err
@@ -140,8 +140,10 @@ func (rb *Ringbuffer) Push(newdata []byte) error {
 	copy(rb.data[:len(rest)], rest)
 
 	rb.offset = len(rest)
-	rb.offset %= rb.Len
 	rb.allDirty = true
+	if rb.offset >= rb.Len {
+		panic("This should never happen. Large data gets handled ")
+	}
 	return nil
 }
 
@@ -172,10 +174,10 @@ func (rb *Ringbuffer) Repeat(n int, after int) {
 		if !rb.allDirty {
 			print("Offset: ")
 			println(rb.offset)
-			print("Dumped: ")
-			println(rb.dumped)
-			print("Dirty: ")
-			println(rb.allDirty)
+			print("LowerBound: ")
+			println(lowerBound)
+			print("Start: ")
+			println(start)
 			panic("Cant fullfill. The area above the offset has no data")
 		}
 		bytesFromTop := -lowerBound
@@ -292,7 +294,8 @@ func (rb *Ringbuffer) Flush() {
 //String is just for testing purposes but might be useful in other scenarios
 //returns the content stitched together correctly
 func (rb *Ringbuffer) String() string {
-	copy(rb.repeatBuf, rb.data[rb.offset:])
-	copy(rb.repeatBuf[len(rb.data)-rb.offset:], rb.data[:rb.offset])
-	return string(rb.repeatBuf)
+	if rb.allDirty {
+		return string(rb.data[rb.offset:]) + string(rb.data[:rb.offset])
+	}
+	return string(rb.data[:rb.offset])
 }
