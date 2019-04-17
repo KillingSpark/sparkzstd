@@ -28,3 +28,8 @@ This already decodes correctly but it is also just 36kb big
 This decodes almost correctly. The result has the correct length but differs in about 400 bytes in different locations
 3. Another larger file (tar archive of some parts of my $HOME which I cant upload here) wont decompress. (Probably) At some point the decoder doesnt read the correct amount of bytes.
 
+## Other Libaries
+1. Some work has been done here towards a pure go implementation: https://github.com/klauspost/compress/tree/zstd-decoder/zstd Sadly I didnt find the project before I Started on this one.
+2. A wuff implementation is WIP here (but wuff doesnt generate Go correctly yet) https://github.com/mvdan/zstd
+3. A cgo binding to zsdt can be found here (which is needed if you want to compress stuff and not just decompress): https://github.com/DataDog/zstd 
+
