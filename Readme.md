@@ -14,7 +14,8 @@ The goal is to provide a io.Reader compatible API for reading zstd encoded data 
 4. Helpers for operations that need to read bits out of a bitstream or a reversed bitstream are located in /bitstream
 
 ## What is still missing
-Generally all concepts of the Format have been implemented and are working (to a degree, some subtle bugs are still there)
+Generally all concepts of the Format have been implemented and are working (to a degree, some subtle bugs are still there) except dictionary support.
+1. Dictionary parsing
 1. Good benchmarks
 2. Better doc
 3. More bugs (I do have some unit tests and did some manual testing but you know...)
