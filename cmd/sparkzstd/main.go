@@ -6,7 +6,6 @@ import (
 	"github.com/killingspark/sparkzsdt/decompression"
 	"io"
 	"os"
-	"runtime/pprof"
 )
 
 type nullWriter struct{}
@@ -73,17 +72,17 @@ func CompareWithFile(original string, compressed *os.File) {
 }
 
 func main() {
-	cpuprofiling, err := os.Create("./cpu.prof")
-	if err != nil {
-		panic(err.Error())
-	}
-	pprof.StartCPUProfile(cpuprofiling)
-	defer pprof.StopCPUProfile()
-
-	memprofiling, err := os.Create("./mem.prof")
-	if err != nil {
-		panic(err.Error())
-	}
+	//cpuprofiling, err := os.Create("./cpu.prof")
+	//if err != nil {
+	//	panic(err.Error())
+	//}
+	//pprof.StartCPUProfile(cpuprofiling)
+	//defer pprof.StopCPUProfile()
+	//
+	//memprofiling, err := os.Create("./mem.prof")
+	//if err != nil {
+	//	panic(err.Error())
+	//}
 
 	for i := 1; i < len(os.Args); i++ {
 		println(os.Args[i])
@@ -117,5 +116,5 @@ func main() {
 	//compares the output of the decompression byte for byte with the original file and produces output similarly
 	//to the "cmp" tool. If you want to disable the progress printing, delete the line "comp.PrintStatus = true"
 	CompareWithFile("./../testingdata/bachelorarbeit.tar", file)
-	pprof.WriteHeapProfile(memprofiling)
+	//pprof.WriteHeapProfile(memprofiling)
 }
