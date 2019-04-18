@@ -9,6 +9,10 @@ I'd love some others to test this library. The workflow I use is:
 2. Compress any file you want (for example tar (without compression) some directories you have and compress the result with zstd)
 3. Use the main.go in cmd/sparkzstd to compare the output of the reader with the original file
 
+The main.go for now just takes a list of pathes to .zst files and checks if the decompressed output matches byte for byte the content of the file with the same path but without .zst extension. 
+eg: `go run cmd/sparkzstd/main.go ../testdata/pi.txt.zst`
+checks the decompression of ../testdata/pi.txt.zst against ../testdata/pi.txt
+
 If you'd like I would be glad to add your results to the list below.
 
 ## What are the goals of this project
