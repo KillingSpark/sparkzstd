@@ -7,8 +7,10 @@ import (
 
 //FrameReader wraps a FrameDecompressor and probides the io.Reader interface
 type FrameReader struct {
-	fd     *FrameDecompressor
-	buffer bytes.Buffer
+	fd          *FrameDecompressor
+	buffer      bytes.Buffer
+	PrintStatus bool
+	readTotal   int64
 }
 
 //NewFrameReader creates the necessary buffers and the FrameDecompressor
@@ -28,6 +30,29 @@ func NewFrameReader(source io.Reader) (*FrameReader, error) {
 }
 
 func (fr *FrameReader) Read(target []byte) (int, error) {
+	read, err := fr.readFromBuffer(target)
+	newTotal := fr.readTotal + int64(read)
+	if fr.PrintStatus {
+		if fr.fd.frame.Header.FrameContentSize > 0 {
+			oldprcnt := uint64(fr.readTotal*100) / fr.fd.frame.Header.FrameContentSize
+			newprcnt := uint64(newTotal*100) / fr.fd.frame.Header.FrameContentSize
+			if oldprcnt != newprcnt {
+				print("Read bytes: ")
+				print(fr.readTotal)
+				print(": ")
+				print(newprcnt)
+				println("%")
+			}
+		} else {
+			print("Read bytes: ")
+			println(fr.readTotal)
+		}
+	}
+	fr.readTotal += int64(read)
+	return read, err
+}
+
+func (fr *FrameReader) readFromBuffer(target []byte) (int, error) {
 	if fr.fd.CurrentBlock.Header.LastBlock {
 		fr.fd.decodebuffer.Flush()
 	}
