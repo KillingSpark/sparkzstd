@@ -172,12 +172,11 @@ func (fd *FrameDecompressor) printCurrentBlockSequences() {
 
 func (fd *FrameDecompressor) DecodeNextBlock() error {
 	err := fd.DecodeNextBlockHeader()
-	if err != nil {
-		return err
-	}
-
 	if fd.Verbose {
 		fd.printCurrentBlockHeader()
+	}
+	if err != nil {
+		return err
 	}
 
 	if fd.CurrentBlock.Header.Type == structure.BlockTypeRaw {
