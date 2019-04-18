@@ -6,7 +6,7 @@ import (
 )
 
 type Frame struct {
-	MagicNumber [4]byte //always present as magic value //TODO
+	MagicNumber [4]byte //always present as magic value
 	Header      FrameHeader
 	Checksum    []byte //optional
 }

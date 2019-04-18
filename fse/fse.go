@@ -27,7 +27,6 @@ type FSETable struct {
 //It will report back any error and the number of bytes taken out of the reader
 func (fset *FSETable) ReadTabledescriptionFromBitstream(source *bufio.Reader) (int, error) {
 	fset.Values = make(map[int]int64)
-	//TODO implement
 
 	bitsrc := bitstream.NewBitstream(source)
 	acclog, err := bitsrc.Read(4)

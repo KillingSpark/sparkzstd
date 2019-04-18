@@ -287,7 +287,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 	case SymbolCompressionModeRepeat:
 		ss.LiteralLengthsFSEDecodingTable = previousBlock.Sequences.LiteralLengthsFSEDecodingTable
 		if previousBlock.Sequences.LiteralLengthsFSEDecodingTable == nil {
-			panic("AA")
+			panic("This is not ok!")
 		}
 	case SymbolCompressionModeCompressed:
 		fset := fse.FSETable{}
@@ -314,8 +314,10 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 		rdc := RepeatingDecodingTable(b)
 		ss.OffsetsFSEDecodingTable = &rdc
 	case SymbolCompressionModeRepeat:
-		//TODO copy right table from previous block
-		panic("Not implemented")
+		ss.OffsetsFSEDecodingTable = previousBlock.Sequences.OffsetsFSEDecodingTable
+		if previousBlock.Sequences.OffsetsFSEDecodingTable == nil {
+			panic("This is not ok!")
+		}
 	case SymbolCompressionModeCompressed:
 		fset := fse.FSETable{}
 		bytesread, err := fset.ReadTabledescriptionFromBitstream(source)
@@ -338,9 +340,11 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 		if err != nil {
 			return bytesUsed, err
 		}
-		//TODO represent rle table somehow
 	case SymbolCompressionModeRepeat:
 		ss.MatchLengthsFSEDecodingTable = previousBlock.Sequences.MatchLengthsFSEDecodingTable
+		if previousBlock.Sequences.MatchLengthsFSEDecodingTable == nil {
+			panic("This is not ok!")
+		}
 	case SymbolCompressionModeCompressed:
 		fset := fse.FSETable{}
 		bytesread, err := fset.ReadTabledescriptionFromBitstream(source)

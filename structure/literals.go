@@ -77,7 +77,14 @@ func (lsh *LiteralSectionHeader) DecodeType(raw byte) error {
 }
 
 func (lsh *LiteralSectionHeader) DecodeSizes(raw []byte) error {
-	//TODO check length of raw?
+	n, err := lsh.BytesNeededToDecodeSizes(raw[0])
+	if err != nil {
+		return err
+	}
+	if n != len(raw) {
+		return errors.New("Not enough bytes to decode sizes")
+	}
+
 	sizeformat := (raw[0] >> 2) & 3
 	if lsh.Type == LiteralsBlockTypeRaw || lsh.Type == LiteralsBlockTypeRLE {
 		lsh.NumberOfStreams = 1
@@ -167,7 +174,6 @@ func (lsh *LiteralSectionHeader) BytesNeededToDecodeSizes(raw byte) (int, error)
 		switch sizeformat {
 		case 0:
 			//difference is only in the number of streams
-			//TODO remember number of present streams somewhere
 			fallthrough
 		case 1:
 			//regenerated and compressed size use 10 bits
@@ -360,8 +366,6 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 			ls.Data = output
 		}
 	}
-
-	//TODO decode huffman if necessary
 	return nil
 }
 
@@ -375,7 +379,10 @@ func bitsToByte(bits int) int {
 
 func (ls *LiteralSection) Read(target []byte) (int, error) {
 	//TODO just return subslices.... absolutely no need for this much copying
-	//TODO decode huffman on the fly
+	//actually there might be the need to. Else we'd need to allocate new slices in RLE literal sections. This is probably cheaper.
+
+	//TODO decode huffman on the fly instead of before hand
+	//might be an overomptimization. Blocks can be only 128kb big anyways...
 	if ls.dataRead == len(ls.Data) {
 		return 0, errors.New("OutOfLiterals")
 	}
