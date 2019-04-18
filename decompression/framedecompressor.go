@@ -204,6 +204,7 @@ func (fd *FrameDecompressor) DecodeNextBlock() error {
 			return err
 		}
 	default:
+		//TODO implement RLE Blocks
 		panic("Not implemented type")
 	}
 	return nil
