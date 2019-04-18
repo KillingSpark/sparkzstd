@@ -182,7 +182,8 @@ func (fd *FrameDecompressor) DecodeNextBlock() error {
 		return err
 	}
 
-	if fd.CurrentBlock.Header.Type == structure.BlockTypeRaw {
+	switch fd.CurrentBlock.Header.Type {
+	case structure.BlockTypeRaw:
 		n, err := io.CopyN(fd.decodebuffer, fd.source, int64(fd.CurrentBlock.Header.BlockSize))
 		if err != nil {
 			return err
@@ -190,7 +191,7 @@ func (fd *FrameDecompressor) DecodeNextBlock() error {
 		if n != int64(fd.CurrentBlock.Header.BlockSize) {
 			panic("Not enough bytes copied")
 		}
-	} else {
+	case structure.BlockTypeCompressed:
 		fd.limitedSource = &io.LimitedReader{R: fd.source, N: int64(fd.CurrentBlock.Header.BlockSize)}
 		err = fd.DecodeNextBlockContent()
 
@@ -202,6 +203,8 @@ func (fd *FrameDecompressor) DecodeNextBlock() error {
 		if err != nil {
 			return err
 		}
+	default:
+		panic("Not implemented type")
 	}
 	return nil
 }
