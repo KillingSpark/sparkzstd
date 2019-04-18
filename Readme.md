@@ -35,6 +35,8 @@ This already decodes correctly but it is also just 36kb big
 2. (FIXED. Does now decode correctly) A ubuntu 18.04.2-live-server-amd64.iso with md5sum: fcbcc756a1aa5314d52e882067c4ca6a. 
 This decodes almost correctly. The result has the correct length but differs in about 400 bytes in different locations
 3. Another larger file (tar archive of some parts of my $HOME which I cant upload here) wont decompress. (Probably) At some point the decoder doesnt read the correct amount of bytes (which is unlikely because I check in many places for correctness of amounts read/decoded etc). It finds a block with the "reserved" block type 3. I tested just discarding the block but that just fails at the next block.
+4. Tested all files from the Canterbury corpus from here http://corpus.canterbury.ac.nz/descriptions/#cantrbry . They decompress correctly
+5. Tested all (the one pi.txt) files from the Miscellaneous corpus from here http://corpus.canterbury.ac.nz/descriptions/#misc . They decompress correctly
 
 ## Other Libaries
 1. Some work has been done here towards a pure go implementation: https://github.com/klauspost/compress/tree/zstd-decoder/zstd Sadly I didnt find the project before I Started on this one.
