@@ -17,6 +17,7 @@ type FrameReader struct {
 func NewFrameReader(source io.Reader) (*FrameReader, error) {
 	fr := &FrameReader{}
 	fr.fd = NewFrameDecompressor(source, &fr.buffer)
+	//fr.fd.Verbose = true
 	err := fr.fd.CheckMagicnum()
 	if err != nil {
 		return nil, err
@@ -38,7 +39,7 @@ func (fr *FrameReader) Read(target []byte) (int, error) {
 			newprcnt := uint64(newTotal*100) / fr.fd.frame.Header.FrameContentSize
 			if oldprcnt != newprcnt {
 				print("Read bytes: ")
-				print(fr.readTotal)
+				print(newTotal)
 				print(": ")
 				print(newprcnt)
 				println("%")
@@ -63,6 +64,8 @@ func (fr *FrameReader) readFromBuffer(target []byte) (int, error) {
 	}
 
 	if fr.fd.CurrentBlock.Header.LastBlock {
+		fr.fd.decodebuffer.Flush()
+
 		if fr.buffer.Len() > 0 {
 			bs := fr.buffer.Bytes()
 			fr.buffer.Reset()
@@ -74,7 +77,8 @@ func (fr *FrameReader) readFromBuffer(target []byte) (int, error) {
 
 	oldSize := fr.buffer.Len()
 
-	for fr.buffer.Len() == oldSize {
+	//decode until the first time the amount of output changes
+	for fr.buffer.Len() == oldSize && !fr.fd.CurrentBlock.Header.LastBlock {
 		err := fr.fd.DecodeNextBlock()
 		if err != nil {
 			return 0, err

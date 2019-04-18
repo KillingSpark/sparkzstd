@@ -45,7 +45,7 @@ func CompareWithFile(original string, compressed *os.File) {
 	if err != nil {
 		panic(err.Error())
 	}
-	comp.PrintStatus = true
+	//comp.PrintStatus = true
 	compReader := bufio.NewReader(comp)
 
 	for i := 0; true; i++ {
@@ -53,7 +53,10 @@ func CompareWithFile(original string, compressed *os.File) {
 		b2, err2 := compReader.ReadByte()
 
 		if err1 == err2 && err1 == io.EOF {
-			println("Ended at same byte. Success")
+			println("Ended at same byte")
+			println("##################")
+			println("###  Success  ####")
+			println("##################")
 			return
 		}
 		if err1 != nil {
@@ -81,6 +84,23 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
+
+	for i := 1; i < len(os.Args); i++ {
+		println(os.Args[i])
+		file, err := os.Open(os.Args[i])
+		if err != nil {
+			println("Error:")
+			println(err.Error())
+			println("Skipping")
+			continue
+		}
+		//compare with same file but with ".zst" cut off
+		original := (os.Args[i])[:len(os.Args[i])-4]
+		print("Comparing with: ")
+		println(original)
+		CompareWithFile(original, file)
+	}
+	return
 
 	file, err := os.Open("./../testingdata/bachelorarbeit.tar.zst")
 	//file, err := os.Open("./../testingdata/ubuntu.zst")

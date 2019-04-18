@@ -41,7 +41,7 @@ func NewFrameDecompressor(s io.Reader, t io.Writer) *FrameDecompressor {
 	}
 }
 
-func (fd *FrameDecompressor) printStatus(target io.Writer) error {
+func (fd *FrameDecompressor) printStatus() error {
 	println("##############################")
 	println("Frame Decoder Status")
 	println("##############################")
@@ -171,6 +171,9 @@ func (fd *FrameDecompressor) printCurrentBlockSequences() {
 }
 
 func (fd *FrameDecompressor) DecodeNextBlock() error {
+	if fd.CurrentBlock.Header.LastBlock {
+		return errors.New("No blocks left in frame")
+	}
 	err := fd.DecodeNextBlockHeader()
 	if fd.Verbose {
 		fd.printCurrentBlockHeader()
@@ -326,5 +329,10 @@ func (fd *FrameDecompressor) DecodeFrameHeader() error {
 	}
 
 	fd.decodebuffer = NewRingbuffer(int(fd.frame.Header.WindowSize), fd.target)
+
+	if fd.Verbose {
+		fd.printStatus()
+	}
+
 	return nil
 }
