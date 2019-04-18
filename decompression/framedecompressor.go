@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"github.com/killingspark/sparkzsdt/structure"
 	"io"
 	"strconv"
@@ -103,8 +104,7 @@ func (fd *FrameDecompressor) DecodeNextBlockContent() error {
 	return nil
 }
 
-//Decompress just decompresses the whole frame and writes the whole output to the target
-func (fd *FrameDecompressor) Decompress() error {
+func (fd *FrameDecompressor) CheckMagicnum() error {
 	//read the magicnumber at the beginning of the file
 	var magicnum [4]byte
 	n := 0
@@ -112,7 +112,7 @@ func (fd *FrameDecompressor) Decompress() error {
 		x, err := fd.source.Read(magicnum[:])
 		n += x
 		if err != nil {
-			panic(err.Error())
+			return err
 		}
 	}
 	var magicnumshould [4]byte
@@ -120,11 +120,20 @@ func (fd *FrameDecompressor) Decompress() error {
 
 	for idx := range magicnum {
 		if magicnum[idx] != magicnumshould[idx] {
-			panic("Magicnum is not correct")
+			return errors.New("Magicnum is not correct")
 		}
 	}
+	return nil
+}
 
-	err := fd.DecodeFrameHeader()
+//Decompress just decompresses the whole frame and writes the whole output to the target
+func (fd *FrameDecompressor) Decompress() error {
+	err := fd.CheckMagicnum()
+	if err != nil {
+		return err
+	}
+
+	err = fd.DecodeFrameHeader()
 	if err != nil {
 		return err
 	}
@@ -161,38 +170,45 @@ func (fd *FrameDecompressor) printCurrentBlockSequences() {
 	println("\t" + string(msh))
 }
 
-//
-func (fd *FrameDecompressor) decodeAllBlocks() error {
-	for !fd.CurrentBlock.Header.LastBlock {
-		err := fd.DecodeNextBlockHeader()
+func (fd *FrameDecompressor) DecodeNextBlock() error {
+	err := fd.DecodeNextBlockHeader()
+	if err != nil {
+		return err
+	}
+
+	if fd.Verbose {
+		fd.printCurrentBlockHeader()
+	}
+
+	if fd.CurrentBlock.Header.Type == structure.BlockTypeRaw {
+		n, err := io.CopyN(fd.decodebuffer, fd.source, int64(fd.CurrentBlock.Header.BlockSize))
+		if err != nil {
+			return err
+		}
+		if n != int64(fd.CurrentBlock.Header.BlockSize) {
+			panic("Not enough bytes copied")
+		}
+	} else {
+		fd.limitedSource = &io.LimitedReader{R: fd.source, N: int64(fd.CurrentBlock.Header.BlockSize)}
+		err = fd.DecodeNextBlockContent()
+
 		if err != nil {
 			return err
 		}
 
-		if fd.Verbose {
-			fd.printCurrentBlockHeader()
+		err = fd.ExecuteSequences()
+		if err != nil {
+			return err
 		}
+	}
+	return nil
+}
 
-		if fd.CurrentBlock.Header.Type == structure.BlockTypeRaw {
-			n, err := io.CopyN(fd.decodebuffer, fd.source, int64(fd.CurrentBlock.Header.BlockSize))
-			if err != nil {
-				return err
-			}
-			if n != int64(fd.CurrentBlock.Header.BlockSize) {
-				panic("Not enough bytes copied")
-			}
-		} else {
-			fd.limitedSource = &io.LimitedReader{R: fd.source, N: int64(fd.CurrentBlock.Header.BlockSize)}
-			err = fd.DecodeNextBlockContent()
-
-			if err != nil {
-				return err
-			}
-
-			err = fd.ExecuteSequences()
-			if err != nil {
-				return err
-			}
+func (fd *FrameDecompressor) decodeAllBlocks() error {
+	for !fd.CurrentBlock.Header.LastBlock {
+		err := fd.DecodeNextBlock()
+		if err != nil {
+			return err
 		}
 
 		fd.BlockCounter++

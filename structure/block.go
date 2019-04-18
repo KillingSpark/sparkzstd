@@ -2,6 +2,7 @@ package structure
 
 import (
 	"errors"
+	"strconv"
 )
 
 type Block struct {
@@ -46,7 +47,7 @@ func (bl *Block) DecodeHeader(raw []byte) error {
 
 	//maximum 128KB
 	if bl.Header.BlockSize > (128 * 1024) {
-		return errors.New("BlockSize too big")
+		return errors.New("BlockSize too big: " + strconv.Itoa(int(bl.Header.BlockSize)))
 	}
 
 	return nil

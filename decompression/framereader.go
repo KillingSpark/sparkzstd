@@ -15,7 +15,12 @@ type FrameReader struct {
 func NewFrameReader(source io.Reader) (*FrameReader, error) {
 	fr := &FrameReader{}
 	fr.fd = NewFrameDecompressor(source, &fr.buffer)
-	err := fr.fd.DecodeFrameHeader()
+	err := fr.fd.CheckMagicnum()
+	if err != nil {
+		return nil, err
+	}
+
+	err = fr.fd.DecodeFrameHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -23,22 +28,33 @@ func NewFrameReader(source io.Reader) (*FrameReader, error) {
 }
 
 func (fr *FrameReader) Read(target []byte) (int, error) {
-	if fr.buffer.Len() <= len(target) {
+	if fr.fd.CurrentBlock.Header.LastBlock {
+		fr.fd.decodebuffer.Flush()
+	}
+
+	if fr.buffer.Len() >= len(target) {
 		copy(target, fr.buffer.Next(len(target)))
 		return len(target), nil
+	}
+
+	if fr.fd.CurrentBlock.Header.LastBlock {
+		if fr.buffer.Len() > 0 {
+			bs := fr.buffer.Bytes()
+			fr.buffer.Reset()
+			copy(target, bs)
+			return len(bs), nil
+		}
+		return 0, io.EOF
 	}
 
 	oldSize := fr.buffer.Len()
 
 	for fr.buffer.Len() == oldSize {
-		err := fr.fd.DecodeNextBlockHeader()
+		err := fr.fd.DecodeNextBlock()
 		if err != nil {
 			return 0, err
 		}
-		err = fr.fd.DecodeNextBlockContent()
-		if err != nil {
-			return 0, err
-		}
+		fr.fd.BlockCounter++
 	}
 	buf := fr.buffer.Next(len(target))
 	copy(target, buf)
