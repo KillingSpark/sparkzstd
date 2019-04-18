@@ -1,5 +1,5 @@
 # Sparkzstd
-This is a decompressor for the Zstandard compression format (Original Documentation[https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md]
+This is a decompressor for the Zstandard compression format [Original Documentation](https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md)
 
 This is still work in progress but it can already decompress some files correctly.
 
