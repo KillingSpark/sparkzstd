@@ -6,6 +6,7 @@ import (
 	"github.com/killingspark/sparkzsdt/decompression"
 	"io"
 	"os"
+	"time"
 )
 
 type nullWriter struct{}
@@ -33,7 +34,7 @@ func DoDecoding(r io.Reader) {
 	}
 }
 
-func CompareWithFile(original string, compressed *os.File) {
+func CompareWithFile(original string, compressed *os.File) int64 {
 	origfile, err := os.Open(original)
 	if err != nil {
 		panic(err.Error())
@@ -47,16 +48,23 @@ func CompareWithFile(original string, compressed *os.File) {
 	//comp.PrintStatus = true
 	compReader := bufio.NewReader(comp)
 
-	for i := 0; true; i++ {
+	differences := false
+
+	i := 0
+	for i = 0; true; i++ {
 		b1, err1 := origReader.ReadByte()
 		b2, err2 := compReader.ReadByte()
 
 		if err1 == err2 && err1 == io.EOF {
 			println("Ended at same byte")
 			println("##################")
-			println("###  Success  ####")
+			if differences {
+				println("###  Diffs    ####")
+			} else {
+				println("###  Success  ####")
+			}
 			println("##################")
-			return
+			break
 		}
 		if err1 != nil {
 			panic(err1.Error())
@@ -67,8 +75,10 @@ func CompareWithFile(original string, compressed *os.File) {
 
 		if b1 != b2 {
 			fmt.Printf("%d\t%d\t%d\n", i, b1, b2)
+			differences = false
 		}
 	}
+	return int64(i)
 }
 
 func main() {
@@ -84,6 +94,8 @@ func main() {
 	//	panic(err.Error())
 	//}
 
+	seconds := float64(0)
+	bytes := int64(0)
 	for i := 1; i < len(os.Args); i++ {
 		println(os.Args[i])
 		file, err := os.Open(os.Args[i])
@@ -97,8 +109,29 @@ func main() {
 		original := (os.Args[i])[:len(os.Args[i])-4]
 		print("Comparing with: ")
 		println(original)
-		CompareWithFile(original, file)
+		startT := time.Now()
+		bytes += CompareWithFile(original, file)
+		timeUsed := time.Now().Sub(startT)
+
+		seconds += timeUsed.Seconds()
 	}
+
+	bytesPerSecond := float64(bytes) / seconds
+	print("\n\n Average detected Speed: ")
+
+	if bytesPerSecond > 1000000 {
+		print(int(bytesPerSecond / 1000000))
+		println(" MB/s")
+	} else {
+		if bytesPerSecond > 1000 {
+			print(int(bytesPerSecond / 1000))
+			println(" KB/s")
+		} else {
+			print(int(bytesPerSecond))
+			println(" B/s")
+		}
+	}
+
 	return
 
 	file, err := os.Open("./../testingdata/bachelorarbeit.tar.zst")
