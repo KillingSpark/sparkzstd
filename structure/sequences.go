@@ -202,10 +202,12 @@ func (ss *SequencesSection) DecodeSequences() (int, error) {
 		print("Bits still in stream: ")
 		println(bitsrc.BitsStillInStream())
 		//panic("Not all bits read")
-		return bitsRead, errors.New("A")
+		return bitsRead, ErrNotAllBitsUsed
 	}
 	return bitsRead, nil
 }
+
+var ErrNotAllBitsUsed = errors.New("Did not read all bits to decode sequences. Likely data is corrupted.")
 
 type SymbolCompressionMode byte
 

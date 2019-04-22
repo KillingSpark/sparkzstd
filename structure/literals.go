@@ -391,7 +391,7 @@ func (ls *LiteralSection) Read(target []byte) (int, error) {
 	//TODO decode huffman on the fly instead of before hand
 	//might be an overomptimization. Blocks can be only 128kb big anyways...
 	if ls.dataRead == len(ls.Data) {
-		return 0, errors.New("OutOfLiterals")
+		return 0, io.EOF
 	}
 	end := ls.dataRead + len(target)
 	if end > len(ls.Data) {
