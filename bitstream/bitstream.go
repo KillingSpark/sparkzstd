@@ -15,11 +15,13 @@ func NewBitstream(src *bufio.Reader) *Bitstream {
 	return &Bitstream{buffer: 0, offset: 8, source: src}
 }
 
+var ErrCantUnwind = errors.New("Cant unwind more bits")
+
 func (bs *Bitstream) UnwindBit() error {
 	if bs.offset == 0 {
 		// This should actually never happen on the first call to this after a read
 		// We only read a new byte because we needed bits from it so there is always at least one bit to rewind after a read
-		return errors.New("Cant do that")
+		return ErrCantUnwind
 	}
 	bs.offset--
 	if bs.offset == 0 {

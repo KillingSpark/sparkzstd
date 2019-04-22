@@ -39,16 +39,19 @@ type LiteralSectionHeader struct {
 	BytesUsedByHeader int
 }
 
+var ErrWrongJumptableBytes = errors.New("Not enough bytes for jumptable dacoding. Must be 6")
+var ErrCorruptedJumptable = errors.New("Bad jump table. Sizes dont add up to compressed size")
+
 func (lsh *LiteralSectionHeader) DecodeJumpTable(raw []byte) error {
 	if len(raw) < 6 {
-		return errors.New("Not enough bytes for jumptable dacoding. Must be 6")
+		return ErrWrongJumptableBytes
 	}
 	lsh.StreamSize1 = binary.LittleEndian.Uint16(raw[:2])
 	lsh.StreamSize2 = binary.LittleEndian.Uint16(raw[2:4])
 	lsh.StreamSize3 = binary.LittleEndian.Uint16(raw[4:6])
 
 	if int(lsh.StreamSize1+lsh.StreamSize2+lsh.StreamSize3) > lsh.CompressedSize {
-		return errors.New("Bad jump table")
+		return ErrCorruptedJumptable
 	}
 	return nil
 }
@@ -76,13 +79,15 @@ func (lsh *LiteralSectionHeader) DecodeType(raw byte) error {
 	return nil
 }
 
+var ErrWrongSizesBytes = errors.New("Not enough bytes to decode sizes")
+
 func (lsh *LiteralSectionHeader) DecodeSizes(raw []byte) error {
 	n, err := lsh.BytesNeededToDecodeSizes(raw[0])
 	if err != nil {
 		return err
 	}
 	if n != len(raw) {
-		return errors.New("Not enough bytes to decode sizes")
+		return ErrWrongSizesBytes
 	}
 
 	sizeformat := (raw[0] >> 2) & 3
@@ -192,6 +197,8 @@ func (lsh *LiteralSectionHeader) BytesNeededToDecodeSizes(raw byte) (int, error)
 	}
 }
 
+var ErrNoHuffTableToCarryOver = errors.New("No previous Huffmantree available")
+
 func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBlock *Block) error {
 	//read literals section
 	var err error
@@ -239,7 +246,7 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 	if ls.Header.Type == LiteralsBlockTypeTreeless {
 		ls.DecodingTable = prevBlock.Literals.DecodingTable
 		if ls.DecodingTable == nil {
-			return errors.New("No previous Huffmantree available")
+			return ErrNoHuffTableToCarryOver
 		}
 	}
 

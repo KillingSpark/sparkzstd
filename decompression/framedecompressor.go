@@ -104,6 +104,8 @@ func (fd *FrameDecompressor) DecodeNextBlockContent() error {
 	return nil
 }
 
+var ErrWrongMagicnumber = errors.New("Magicnum is not correct")
+
 func (fd *FrameDecompressor) CheckMagicnum() error {
 	//read the magicnumber at the beginning of the file
 	var magicnum [4]byte
@@ -120,7 +122,7 @@ func (fd *FrameDecompressor) CheckMagicnum() error {
 
 	for idx := range magicnum {
 		if magicnum[idx] != magicnumshould[idx] {
-			return errors.New("Magicnum is not correct")
+			return ErrWrongMagicnumber
 		}
 	}
 	return nil
@@ -170,9 +172,11 @@ func (fd *FrameDecompressor) printCurrentBlockSequences() {
 	println("\t" + string(msh))
 }
 
+var ErrOutOfBlocks = errors.New("No blocks left in frame")
+
 func (fd *FrameDecompressor) DecodeNextBlock() error {
 	if fd.CurrentBlock.Header.LastBlock {
-		return errors.New("No blocks left in frame")
+		return ErrOutOfBlocks
 	}
 	err := fd.DecodeNextBlockHeader()
 	if fd.Verbose {

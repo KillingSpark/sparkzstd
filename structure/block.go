@@ -2,7 +2,6 @@ package structure
 
 import (
 	"errors"
-	"strconv"
 )
 
 type Block struct {
@@ -28,6 +27,7 @@ type BlockHeader struct {
 
 var ErrNotEnoughBytesForBlockHeader = errors.New("Not enough / too much bytes to decode the blockheader. Must be 3.")
 var ErrIllegalBlockType = errors.New("Illegal BlockType. Must be smaller than 3.")
+var ErrIllegalBlockSize = errors.New("Illegal block-size. Must be lower than 128kb")
 
 //DecodeHeader takes the 3 raw bytes and fills the
 func (bl *Block) DecodeHeader(raw []byte) error {
@@ -48,7 +48,7 @@ func (bl *Block) DecodeHeader(raw []byte) error {
 
 	//maximum 128KB
 	if bl.Header.BlockSize > (128 * 1024) {
-		return errors.New("BlockSize too big: " + strconv.Itoa(int(bl.Header.BlockSize)))
+		return ErrIllegalBlockSize
 	}
 
 	return nil
