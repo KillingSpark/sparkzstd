@@ -198,6 +198,7 @@ func (lsh *LiteralSectionHeader) BytesNeededToDecodeSizes(raw byte) (int, error)
 }
 
 var ErrNoHuffTableToCarryOver = errors.New("No previous Huffmantree available")
+var ErrStreamDidntDecodeToRightLength = errors.New("Huffstream did not decode to the correct length")
 
 func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBlock *Block) error {
 	//read literals section
@@ -222,19 +223,11 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 		return err
 	}
 
-	//read all needed bytes
-	//n = 1 because the first byte still carries some of the actual size value
-	for n := 1; n < needed; _ = n {
-		x, err := source.Read(headerbuffer[n:needed])
-		ls.Header.BytesUsedByHeader += x
-		n += x
-		if err != nil {
-			return err
-		}
-	}
+	x, err := io.ReadFull(source, headerbuffer[1:needed])
+	ls.Header.BytesUsedByHeader += x
 
-	if ls.Header.BytesUsedByHeader != needed {
-		panic("This shouldnt happen if above code reads correct amounts of bytes")
+	if err != nil {
+		return err
 	}
 
 	err = ls.Header.DecodeSizes(headerbuffer[:needed])
@@ -252,11 +245,14 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 
 	if ls.Header.Type == LiteralsBlockTypeCompressed {
 		bytes, err := ls.TreeDesc.DecodeFromStream(source)
-		ls.DecodingTable = ls.TreeDesc.Build()
-
 		if err != nil {
 			return err
 		}
+		ls.DecodingTable, err = ls.TreeDesc.Build()
+		if err != nil {
+			return err
+		}
+
 		ls.Header.CompressedSize -= bytes
 		ls.BytesUsedByTree = bytes
 	}
@@ -283,15 +279,10 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 	needed = ls.Header.CompressedSize // compressed size ==regenerated size if not actually compressed
 	ls.Data = make([]byte, needed)
 
-	n, err := io.ReadFull(source, ls.Data)
-
+	_, err = io.ReadFull(source, ls.Data)
 	if err != nil {
 		println("Error while reading literals section data")
 		return err
-	}
-
-	if n != needed {
-		panic("Didnt read enough bytes for the literalsection")
 	}
 
 	//decompress if necessary
@@ -320,7 +311,7 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 				return err
 			}
 			if bytes1 != (ls.Header.RegeneratedSize+3)/4 {
-				panic("First stream didnt have right decoded length")
+				return ErrStreamDidntDecodeToRightLength
 			}
 
 			low += int(ls.Header.StreamSize1)
@@ -332,13 +323,14 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 			}
 
 			if bytes2 != (ls.Header.RegeneratedSize+3)/4 {
-				panic("First stream didnt have right decoded length")
+				return ErrStreamDidntDecodeToRightLength
 			}
 
 			low += int(ls.Header.StreamSize2)
 			high += int(ls.Header.StreamSize3)
 
 			if int(high) > len(ls.Data) {
+				//keeping. should have been checked beforehand
 				panic("Corrupt stream sizes")
 			}
 
@@ -348,13 +340,14 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 			}
 
 			if bytes3 != (ls.Header.RegeneratedSize+3)/4 {
-				panic("First stream didnt have right decoded length")
+				return ErrStreamDidntDecodeToRightLength
 			}
 
 			low += int(ls.Header.StreamSize3)
 			high += int(ls.Header.CalcStreamsize4())
 
 			if int(high) != ls.Header.CompressedSize {
+				//keeping. should ahve been checked beforehand
 				panic("Corrupt stream sizes")
 			}
 
@@ -364,9 +357,7 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 			}
 
 			if bytes1+bytes2+bytes3+bytes4 != ls.Header.RegeneratedSize {
-				println("----")
-				println(ls.Header.RegeneratedSize)
-				println(bytes1 + bytes2 + bytes3 + bytes4)
+				//keeping. These should match because the checks before didnt fail
 				panic("Streams decoded combined didnt have correct length")
 			}
 

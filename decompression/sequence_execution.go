@@ -1,11 +1,14 @@
 package decompression
 
 import (
+	"errors"
 	"github.com/killingspark/sparkzsdt/structure"
 )
 
 var counter = 0
 var totalOutput = 0
+
+var ErrDidntCopyAllLiteralBytes = errors.New("Not enough bytes read to execute literals copy")
 
 //ExecuteSequences is used after decoding to produce the actual decompressed content of the block
 func (fd *FrameDecompressor) ExecuteSequences() error {
@@ -20,7 +23,7 @@ func (fd *FrameDecompressor) ExecuteSequences() error {
 				return err
 			}
 			if n != seq.LiteralLength {
-				panic("Not enough bytes read to execute literals copy")
+				return ErrDidntCopyAllLiteralBytes
 			}
 
 			err = fd.decodebuffer.Push(lbuf)
@@ -31,7 +34,10 @@ func (fd *FrameDecompressor) ExecuteSequences() error {
 
 		//offset & match
 		offset := fd.nextOffset(seq) //updates offset history
-		fd.decodebuffer.RepeatBeforeIndex(int(seq.MatchLength), int(offset))
+		err := fd.decodebuffer.RepeatBeforeIndex(int(seq.MatchLength), int(offset))
+		if err != nil {
+			return err
+		}
 
 		totalOutput += seq.LiteralLength
 		totalOutput += seq.MatchLength
@@ -85,6 +91,7 @@ func (fd *FrameDecompressor) nextOffset(seq structure.Sequence) int64 {
 		} else {
 			//STANDARD CASE
 			if seq.Offset <= 3 {
+				//keeping. Would be a programming error
 				panic("Forgot some case?")
 			}
 			offset = int64(seq.Offset) - 3

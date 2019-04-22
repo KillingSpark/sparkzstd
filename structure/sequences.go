@@ -138,12 +138,9 @@ func (ss *SequencesSection) DecodeSequences() (int, error) {
 		bitsRead++
 	}
 
-	if x > 7 {
-		panic("Bitstream is corrupt. More then the first(or rather last) byte was zero")
+	if bitsRead > 8 {
+		return bitsRead, ErrBadPadding
 	}
-
-	//print("padding: ")
-	//println(x)
 
 	bits, err := ss.LiteralLengthsFSEDecodingTable.InitState(bitsrc)
 	bitsRead += bits
@@ -160,13 +157,6 @@ func (ss *SequencesSection) DecodeSequences() (int, error) {
 	if err != nil {
 		return bitsRead, err
 	}
-
-	//print("llstate: ")
-	//println(ss.LiteralLengthsFSEDecodingTable.GetState())
-	//print("ofstate: ")
-	//println(ss.OffsetsFSEDecodingTable.GetState())
-	//print("mlstate: ")
-	//println(ss.MatchLengthsFSEDecodingTable.GetState())
 
 	ss.Sequences = make([]Sequence, ss.Header.NumberOfSequences)
 
@@ -270,6 +260,10 @@ func (ssh *SequencesSectionHeader) DecodeNumberOfSequences(raw []byte) (int, err
 	return 0, nil
 }
 
+var ErrNoLLTableToCarryOver = errors.New("Needed to copy old LiteralLenghts table but there was none")
+var ErrNoMLTableToCarryOver = errors.New("Needed to copy old MathcLenghts table but there was none")
+var ErrNoOFTableToCarryOver = errors.New("Needed to copy old Offsets table but there was none")
+
 func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Block) (int, error) {
 	bytesUsed := 0
 
@@ -289,7 +283,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 	case SymbolCompressionModeRepeat:
 		ss.LiteralLengthsFSEDecodingTable = previousBlock.Sequences.LiteralLengthsFSEDecodingTable
 		if previousBlock.Sequences.LiteralLengthsFSEDecodingTable == nil {
-			panic("This is not ok!")
+			return bytesUsed, ErrNoLLTableToCarryOver
 		}
 	case SymbolCompressionModeCompressed:
 		fset := fse.FSETable{}
@@ -318,7 +312,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 	case SymbolCompressionModeRepeat:
 		ss.OffsetsFSEDecodingTable = previousBlock.Sequences.OffsetsFSEDecodingTable
 		if previousBlock.Sequences.OffsetsFSEDecodingTable == nil {
-			panic("This is not ok!")
+			return bytesUsed, ErrNoOFTableToCarryOver
 		}
 	case SymbolCompressionModeCompressed:
 		fset := fse.FSETable{}
@@ -345,7 +339,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 	case SymbolCompressionModeRepeat:
 		ss.MatchLengthsFSEDecodingTable = previousBlock.Sequences.MatchLengthsFSEDecodingTable
 		if previousBlock.Sequences.MatchLengthsFSEDecodingTable == nil {
-			panic("This is not ok!")
+			return bytesUsed, ErrNoMLTableToCarryOver
 		}
 	case SymbolCompressionModeCompressed:
 		fset := fse.FSETable{}
@@ -374,18 +368,16 @@ func (ss *SequencesSection) DecodeNextSequenceSection(source *bufio.Reader, byte
 	}
 
 	bytesNeededForNOS := ss.Header.BytesNeededForNumberOfSequences(buf[0])
-	bytesReadForNOS, err := io.ReadFull(source, buf[1:bytesNeededForNOS])
+	_, err = io.ReadFull(source, buf[1:bytesNeededForNOS])
 	if err != nil {
 		return err
-	}
-	if bytesReadForNOS != bytesNeededForNOS-1 {
-		panic("Not enough bytes read to decode NumberOfSequences")
 	}
 
 	bytesUsedByNOS, err := ss.Header.DecodeNumberOfSequences(buf[:bytesNeededForNOS])
 	bytesUsedInHeader += bytesUsedByNOS
 	if err != nil {
-		panic(err.Error())
+		ss.Header.BytesUsedByHeader = bytesUsedInHeader
+		return err
 	}
 	if buf[0] == 0 {
 		//the data in the literals section is the actual data, no sequences have been written
@@ -413,29 +405,14 @@ func (ss *SequencesSection) DecodeNextSequenceSection(source *bufio.Reader, byte
 
 	needed := bytesLeftInBlock - bytesUsedInHeader
 	ss.Data = make([]byte, needed)
-
-	if bytesLeftInBlock != bytesUsedInHeader+needed {
-		panic("Corrupted lenghtes somewhere")
-	}
-
 	ss.Header.BytesUsedByHeader = bytesUsedInHeader
 
 	//read the rest of the data. It contains a bitsream that needs to be read "backwards" it needs to be read in full before
 	//it can be processed
-	n, err := io.ReadFull(source, ss.Data)
+	_, err = io.ReadFull(source, ss.Data)
 
 	if err != nil {
-		print("Error while reading sequence section data. Still need: ")
-		println(needed - n)
 		return err
-	}
-
-	if n != needed {
-		panic("Wrong number of bytes have been read")
-	}
-
-	if bytesUsedInHeader+needed != bytesLeftInBlock {
-		panic("Not enough bytes used by sequence block")
 	}
 
 	//ss.Data should now only include the bitsream containing the sequences
@@ -450,11 +427,10 @@ func (ss *SequencesSection) DecodeNextSequenceSection(source *bufio.Reader, byte
 	}
 
 	if bytesUsed != len(ss.Data) {
-		print(bytesUsed)
-		print("/")
-		println(len(ss.Data))
-		panic("Not all bytes used?")
+		return ErrNotAllBytesUsedWhileSequenceDecoding
 	}
 
 	return nil
 }
+
+var ErrNotAllBytesUsedWhileSequenceDecoding = errors.New("Didnt use all bytes from the sequence stream. Data is likely corrupted")

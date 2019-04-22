@@ -68,6 +68,8 @@ func (fd *FrameDecompressor) printStatus() error {
 	return err
 }
 
+var ErrCorruptSizes = errors.New("The sizes of literal and sequence section did not add up to blocksize")
+
 //DecodeNextBlockContent decodes the literal and sequence section of the current block
 func (fd *FrameDecompressor) DecodeNextBlockContent() error {
 	bufsrc := bufio.NewReader(fd.limitedSource)
@@ -92,13 +94,13 @@ func (fd *FrameDecompressor) DecodeNextBlockContent() error {
 
 	bytesUsedWhileDecoding := int(bytesUsedByLiterals) + len(fd.CurrentBlock.Sequences.Data) + fd.CurrentBlock.Sequences.Header.BytesUsedByHeader
 	if uint64(bytesUsedWhileDecoding) != fd.CurrentBlock.Header.BlockSize {
-		panic("Corrupt sizes!")
+		return ErrCorruptSizes
 	}
 	if bytesUsedWhileDecoding != int(fd.CurrentBlock.Header.BlockSize) {
-		panic("Corrupt sizes!")
+		return ErrCorruptSizes
 	}
 	if fd.limitedSource.N != 0 {
-		panic("Corrupt sizes!")
+		return ErrCorruptSizes
 	}
 
 	return nil
@@ -188,13 +190,11 @@ func (fd *FrameDecompressor) DecodeNextBlock() error {
 
 	switch fd.CurrentBlock.Header.Type {
 	case structure.BlockTypeRaw:
-		n, err := io.CopyN(fd.decodebuffer, fd.source, int64(fd.CurrentBlock.Header.BlockSize))
+		_, err := io.CopyN(fd.decodebuffer, fd.source, int64(fd.CurrentBlock.Header.BlockSize))
 		if err != nil {
 			return err
 		}
-		if n != int64(fd.CurrentBlock.Header.BlockSize) {
-			panic("Not enough bytes copied")
-		}
+
 	case structure.BlockTypeCompressed:
 		fd.limitedSource = &io.LimitedReader{R: fd.source, N: int64(fd.CurrentBlock.Header.BlockSize)}
 		err = fd.DecodeNextBlockContent()

@@ -3,6 +3,7 @@ package structure
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"github.com/killingspark/sparkzsdt/bitstream"
 	"github.com/killingspark/sparkzsdt/fse"
 	"io"
@@ -63,30 +64,12 @@ func (htd *HuffmanTreeDesc) DecodeFromStream(source *bufio.Reader) (int, error) 
 		// This shallow copy is enough because we only need to have separate states. The decoding table can be shared
 		fset2 := fset
 
-		//print("AccuracyLog: ")
-		//println(fset.AccuracyLog)
-		//for i := 0; i < len(fset.NumBits); i++ {
-		//	print(i)
-		//	print(",")
-		//	println(fset.NumBits[i].Symbol)
-		//}
-		//println("")
-		//
-		//for i := 0; i < len(fset.Values); i++ {
-		//	print(i)
-		//	print(",")
-		//	println(fset.Values[i])
-		//}
-
 		bitStreamLength := htd.LengthInByte - bs
 		buffer := make([]byte, bitStreamLength)
 		read, err := io.ReadFull(source, buffer)
 		bytesRead += read
 		if err != nil {
 			return bytesRead, err
-		}
-		if read != bitStreamLength {
-			panic("Corrupt lengths")
 		}
 
 		weightsOutput := bytes.Buffer{}
@@ -122,7 +105,10 @@ func (htd *HuffmanTreeDesc) DecodeFromStream(source *bufio.Reader) (int, error) 
 	return bytesRead, nil
 }
 
-func (htd *HuffmanTreeDesc) Build() *HuffmanDecodingTable {
+var ErrWrongSumOfWeights = errors.New("The weights didnt leave a power of two for the last weight")
+var ErrCorruptedHuffTree = errors.New("The tree in the description is corrupted")
+
+func (htd *HuffmanTreeDesc) Build() (*HuffmanDecodingTable, error) {
 	sum := uint64(0)
 	for _, w := range htd.Weights {
 		weight := uint64(0)
@@ -139,11 +125,7 @@ func (htd *HuffmanTreeDesc) Build() *HuffmanDecodingTable {
 	actualSum := uint64(1) << log
 	leftOver := actualSum - sum
 	if leftOver&(leftOver-1) != 0 {
-		print("ActualSum: ")
-		println(actualSum)
-		print("LeftOver: ")
-		println(leftOver)
-		panic("Should be power of two")
+		return nil, ErrWrongSumOfWeights
 	}
 	lastWeight := fse.BIT_highbit32(uint32(leftOver)) + 1
 
@@ -158,20 +140,8 @@ func (htd *HuffmanTreeDesc) Build() *HuffmanDecodingTable {
 			nob = int(maxBits) + 1 - int(w)
 		}
 		htd.NumBits[idx] = nob
-		//print("NumBits: ")
-		//print(idx)
-		//print(", ")
-		//println(nob)
-
 		rankCount[nob]++
 	}
-
-	//for i := 0; i < len(rankCount); i++ {
-	//	print("Rank_Count: ")
-	//	print(i)
-	//	print(", ")
-	//	println(rankCount[i])
-	//}
 
 	lastNob := 0
 	if lastWeight > 0 {
@@ -200,7 +170,7 @@ func (htd *HuffmanTreeDesc) Build() *HuffmanDecodingTable {
 	}
 
 	if rankIdx[0] != len(table.NumberOfBits) {
-		panic("This should be the same")
+		return nil, ErrCorruptedHuffTree
 	}
 
 	for i := 0; i < len(htd.NumBits); i++ {
@@ -215,20 +185,7 @@ func (htd *HuffmanTreeDesc) Build() *HuffmanDecodingTable {
 		}
 	}
 
-	//for i := 0; i < len(table.Symbols); i++ {
-	//	if table.NumberOfBits[i] != 0 {
-	//		print("NoB: ")
-	//		print(i)
-	//		print(", ")
-	//		println(table.NumberOfBits[i])
-	//		print("Symbol: ")
-	//		print(i)
-	//		print(", ")
-	//		println(table.Symbols[i])
-	//	}
-	//}
-
-	return &table
+	return &table, nil
 }
 
 func (ht *HuffmanDecodingTable) InitState(source *bitstream.Reversebitstream) error {
@@ -257,6 +214,9 @@ func (ht *HuffmanDecodingTable) DecodeSymbol(source *bitstream.Reversebitstream)
 	return bits, symbol, nil
 }
 
+var ErrBadPadding = errors.New("The padding at the end of the stream was more than a byte. Data is likely corrupted")
+var ErrDidntUseAllBitsToDecodeHuffman = errors.New("Didnt read all bits to decode huffman stream. Data is likely corrupted")
+
 func (ht *HuffmanDecodingTable) DecodeStream(data, output []byte) (int, error) {
 	bitsum := 0
 	bitsrc := bitstream.NewReversebitstream(data)
@@ -272,8 +232,8 @@ func (ht *HuffmanDecodingTable) DecodeStream(data, output []byte) (int, error) {
 		bitsum++
 	}
 
-	if x > 7 {
-		panic("Bitstream is corrupt. More then the first(or rather last) byte was zero")
+	if bitsum > 8 {
+		return bitsum, ErrBadPadding
 	}
 
 	err = ht.InitState(bitsrc)
@@ -301,13 +261,8 @@ func (ht *HuffmanDecodingTable) DecodeStream(data, output []byte) (int, error) {
 	if bitsrc.BitsStillInStream()+1 != -ht.MaxBits {
 		println(bitsrc.BitsStillInStream() + 1)
 		println(-ht.MaxBits)
-		panic("Should be the same")
+		return totalOutput, ErrDidntUseAllBitsToDecodeHuffman
 	}
 
-	//if bitsToByte(bitsum) != len(data) {
-	//	println(bitsToByte(bitsum))
-	//	println(len(data))
-	//	panic("Didnt read all data")
-	//}
 	return totalOutput, nil
 }

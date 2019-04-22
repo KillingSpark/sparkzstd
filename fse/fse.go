@@ -105,19 +105,19 @@ func (fset *FSETable) ReadTabledescriptionFromBitstream(source *bufio.Reader) (i
 		}
 	}
 
-	if remaining != 0 {
-		print(remaining)
-		print("/")
-		println(sumOfProbabilities)
-		panic("This should not happen")
-	}
-
 	bytesRead := bitsRead / 8
 	if bitsRead%8 != 0 {
 		bytesRead++
 	}
+
+	if remaining != 0 {
+		return bytesRead, ErrDidntReadAllProbabilities
+	}
+
 	return bytesRead, nil
 }
+
+var ErrDidntReadAllProbabilities = errors.New("The probabilities didnt add up to the expected total sum")
 
 //BuildDecodingTable more or less is oriented on the implementation in https://github.com/facebook/zstd
 // symbolTranslation may be nil. Then the symbols will just not be translated
@@ -142,10 +142,6 @@ func (fset *FSETable) BuildDecodingTable(symbolTranslation []int, extraBits []by
 		}
 	}
 
-	if highposition < 0 {
-		panic("Too many small probabilities")
-	}
-
 	position := 0
 
 	//then place all other symbols
@@ -156,6 +152,7 @@ func (fset *FSETable) BuildDecodingTable(symbolTranslation []int, extraBits []by
 			//allocate probability many cells to this symbol
 			for i := int64(0); i < probability; i++ {
 				if fset.DecodingTable[position] != nil {
+					//keeping. This is an programming error
 					panic("Overwriting should never happen")
 				}
 
@@ -175,6 +172,7 @@ func (fset *FSETable) BuildDecodingTable(symbolTranslation []int, extraBits []by
 	}
 
 	if position != 0 {
+		//keeping. This is an programming error
 		panic("Position did not end up at 0")
 	}
 
@@ -290,6 +288,8 @@ func (fset *FSETable) DecodeSymbol(src *bitstream.Reversebitstream) (symbol int,
 	return
 }
 
+var ErrBadPadding = errors.New("The padding at the end of the stream was more than a byte. Data is likely corrupted")
+
 // DecodeInterleavedFSEStreams intializes the states for each table in the order of the slice and
 // then decodes values in a round robin fashion
 func DecodeInterleavedFSEStreams(decodingTables []*FSETable, src []byte, target io.Writer) (int, error) {
@@ -307,8 +307,8 @@ func DecodeInterleavedFSEStreams(decodingTables []*FSETable, src []byte, target 
 		bitsRead++
 	}
 
-	if x > 7 {
-		panic("Bitstream is corrupt. More then the first(or rather last) byte was zero")
+	if bitsRead > 8 {
+		return bitsRead, ErrBadPadding
 	}
 
 	//print("Padding: ")

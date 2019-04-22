@@ -142,6 +142,7 @@ func (rb *Ringbuffer) Push(newdata []byte) error {
 	rb.offset = len(rest)
 	rb.allDirty = true
 	if rb.offset >= rb.Len {
+		//keeping the panic because its an programming error if this happens
 		panic("This should never happen. Large data gets handled ")
 	}
 	return nil
@@ -156,13 +157,15 @@ func (rb *Ringbuffer) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+var ErrCantRepeatBytes = errors.New("You cant repeat bytes from before the first one")
+
 //Repeat is used to provide the offset/matchlength sequence execution
 //skip "after" newest bytes and repeat n bytes
 // say buffer contains: 1234123456
 //	n == 3, after == 4
 //  this amounts to pushing to the back: 412
 // result would be: 1234123456412
-func (rb *Ringbuffer) Repeat(n int, after int) {
+func (rb *Ringbuffer) Repeat(n int, after int) error {
 	buf := rb.repeatBuf[:n]
 
 	start := rb.offset - after
@@ -178,7 +181,7 @@ func (rb *Ringbuffer) Repeat(n int, after int) {
 			println(lowerBound)
 			print("Start: ")
 			println(start)
-			panic("Cant fullfill. The area above the offset has no data")
+			return ErrCantRepeatBytes
 		}
 		bytesFromTop := -lowerBound
 		if lowerBound < 0 && start >= 0 {
@@ -187,11 +190,9 @@ func (rb *Ringbuffer) Repeat(n int, after int) {
 		} else {
 			if lowerBound < 0 && start < 0 {
 				skipBytesFromTop := -start
-				if (bytesFromTop - skipBytesFromTop) != n {
-					panic("WRONG!")
-				}
 				copy(buf, rb.data[rb.Len-bytesFromTop:rb.Len-skipBytesFromTop])
 			} else {
+				//keeping. Would  be a programming error
 				panic("I forgot a case?")
 			}
 		}
@@ -199,6 +200,7 @@ func (rb *Ringbuffer) Repeat(n int, after int) {
 	}
 
 	rb.Push(buf)
+	return nil
 }
 
 //RepeatBeforeIndex is used to translate the semantics Zstd uses in the sequences
@@ -208,7 +210,7 @@ func (rb *Ringbuffer) Repeat(n int, after int) {
 // n = 3, oldest = 5
 // repeat: "def"
 // result string: abcdefghdef
-func (rb *Ringbuffer) RepeatBeforeIndex(n int, oldest int) {
+func (rb *Ringbuffer) RepeatBeforeIndex(n int, oldest int) error {
 	skip := oldest - n
 
 	//special case allowed by the zstd specification.
@@ -238,10 +240,10 @@ func (rb *Ringbuffer) RepeatBeforeIndex(n int, oldest int) {
 				rb.allDirty = true
 			}
 		}
-		return
+		return nil
 	}
 
-	rb.Repeat(n, skip)
+	return rb.Repeat(n, skip)
 }
 
 //convenience function. Use if "high" might be higher than rb.Len
@@ -268,6 +270,8 @@ func (rb *Ringbuffer) dumpWrapping(low, high int) error {
 	return nil
 }
 
+var ErrDidntDumpAll = errors.New("Did not write all bytes. Output will likely be corrupted")
+
 // write bytes in the specified range to the rb.Dump writer
 func (rb *Ringbuffer) dump(low, high int) error {
 	w, err := WriteFull(rb.Dump, rb.data[low:high])
@@ -275,7 +279,7 @@ func (rb *Ringbuffer) dump(low, high int) error {
 		return err
 	}
 	if w != (high - low) {
-		panic("AAAAA")
+		return ErrDidntDumpAll
 	}
 	rb.dumped += w
 	return nil
