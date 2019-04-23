@@ -6,16 +6,20 @@ import (
 	"github.com/killingspark/sparkzsdt/decompression"
 	"io"
 	"os"
+	"runtime/pprof"
 	"time"
 )
 
-type nullWriter struct{}
+type nullWriter struct {
+	N uint64
+}
 
 func (nw *nullWriter) Write(data []byte) (int, error) {
+	nw.N += uint64(len(data))
 	return len(data), nil
 }
 
-func DoDecoding(r io.Reader) {
+func DoDecoding(r io.Reader) int64 {
 	var err error
 	outfile := &nullWriter{}
 	//outfile, err := os.OpenFile("/dev/null", os.O_WRONLY, 777)
@@ -26,12 +30,13 @@ func DoDecoding(r io.Reader) {
 	}
 
 	dec := decompression.NewFrameDecompressor(r, outfile)
-	dec.Verbose = true
+	//dec.Verbose = true
 
 	err = dec.Decompress()
 	if err != nil {
 		panic(err.Error())
 	}
+	return int64(outfile.N)
 }
 
 func CompareWithFile(original string, compressed *os.File) int64 {
@@ -111,6 +116,7 @@ func main() {
 		println(original)
 		startT := time.Now()
 		bytes += CompareWithFile(original, file)
+		//bytes += DoDecoding(file)
 		timeUsed := time.Now().Sub(startT)
 
 		seconds += timeUsed.Seconds()
