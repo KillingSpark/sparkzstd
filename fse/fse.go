@@ -61,7 +61,14 @@ func (fset *FSETable) ReadTabledescriptionFromBitstream(source *bufio.Reader) (i
 
 		if (value & lowermask) < thresh {
 			// "small" number. Unwind last bit read
-			bitsrc.UnwindBit()
+			err := bitsrc.UnwindBit()
+			if err != nil {
+				bytesRead := bitsRead / 8
+				if bitsRead%8 != 0 {
+					bytesRead++
+				}
+				return bytesRead, err
+			}
 			bitsRead--
 			value = value & lowermask
 		} else {
@@ -74,6 +81,7 @@ func (fset *FSETable) ReadTabledescriptionFromBitstream(source *bufio.Reader) (i
 		currentSymbol++
 
 		probabilitiy := int(value) - 1
+
 		if probabilitiy == -1 {
 			remaining-- //counts as a 1 because it will get one cell in the decoding table
 		} else {
@@ -147,8 +155,8 @@ func (fset *FSETable) BuildDecodingTable(symbolTranslation []int, extraBits []by
 	//then place all other symbols
 	for symbol := 0; symbol < len(fset.Values); symbol++ {
 		probability := fset.Values[symbol] - 1
-		if probability != -1 {
 
+		if probability > 0 {
 			//allocate probability many cells to this symbol
 			for i := int64(0); i < probability; i++ {
 				if fset.DecodingTable[position] != nil {

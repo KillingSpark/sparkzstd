@@ -45,7 +45,7 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 	if err != nil {
 		panic(err.Error())
 	}
-	//comp.PrintStatus = true
+	comp.PrintStatus = true
 	compReader := bufio.NewReader(comp)
 
 	differences := false
@@ -75,7 +75,7 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 
 		if b1 != b2 {
 			fmt.Printf("%d\t%d\t%d\n", i, b1, b2)
-			differences = false
+			differences = true
 		}
 	}
 	return int64(i)

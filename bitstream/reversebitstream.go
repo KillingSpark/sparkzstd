@@ -15,6 +15,9 @@ func (rbs *Reversebitstream) BitsStillInStream() int {
 }
 
 func (rbs *Reversebitstream) Read(n int) (uint64, error) {
+	if n == 0 {
+		return 0, nil
+	}
 	var value uint64
 
 	if rbs.offset <= -1 {

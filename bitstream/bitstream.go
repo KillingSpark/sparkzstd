@@ -26,13 +26,21 @@ func (bs *Bitstream) UnwindBit() error {
 	bs.offset--
 	if bs.offset == 0 {
 		//if we unread the bit because of which we read the byte in the first place, push the byte back into the buffer
-		bs.source.UnreadByte()
+		err := bs.source.UnreadByte()
+		if err != nil {
+			return err
+		}
+
 		bs.offset = 8
 	}
 	return nil
 }
 
 func (bs *Bitstream) Read(n int) (uint64, error) {
+	if n == 0 {
+		return 0, nil
+	}
+
 	var err error
 	var val uint64
 
@@ -49,7 +57,6 @@ func (bs *Bitstream) Read(n int) (uint64, error) {
 	if bs.offset < 8 { //flush the bits from the buffer into the value
 		val = uint64(bs.buffer >> bs.offset)
 		bs.offset = 8
-		bs.buffer = 0
 	}
 
 	remainingBitsNeeded := uint(n) - bitsFromBuffer
@@ -57,14 +64,13 @@ func (bs *Bitstream) Read(n int) (uint64, error) {
 	bytesNeeded := (remainingBitsNeeded / 8) //only full bytes counted. The last one will be read separatly if necessary
 
 	//read bytes until the last one and add them to the value
-	var read byte
 	i := uint(0)
 	for _ = i; i < bytesNeeded; i++ {
-		read, err = bs.source.ReadByte()
+		bs.buffer, err = bs.source.ReadByte()
 		if err != nil {
 			return 0, err
 		}
-		val += uint64(read) << (bitsFromBuffer + 8*i)
+		val += uint64(bs.buffer) << (bitsFromBuffer + 8*i)
 	}
 
 	if bitsNeededFromLastByte > 0 {
@@ -76,6 +82,8 @@ func (bs *Bitstream) Read(n int) (uint64, error) {
 		mask := (byte(1) << bitsNeededFromLastByte) - 1
 		val += uint64(bs.buffer&mask) << (uint(n) - bitsNeededFromLastByte)
 		bs.offset = bitsNeededFromLastByte
+	} else {
+		bs.offset = 8
 	}
 
 	return val, nil

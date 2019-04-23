@@ -74,19 +74,21 @@ func (ss *SequencesSection) DecodeSequence(source *bitstream.Reversebitstream) (
 		return seq, 0, err
 	}
 
-	//print("of stat: ")
-	//println(ss.OffsetsFSEDecodingTable.State)
-	//print("of Code: ")
-	//println(ofcode)
-	//print("ll stat: ")
-	//println(ss.LiteralLengthsFSEDecodingTable.State)
-	//print("ll Code: ")
-	//println(llcode)
-	//print("ml stat: ")
-	//println(ss.MatchLengthsFSEDecodingTable.State)
-	//print("ml Code: ")
-	//println(mlcode)
-	//println("")
+	//	if common.BlockCount == 3459 {
+	//	print("of stat: ")
+	//	println(ss.OffsetsFSEDecodingTable.GetState())
+	//	print("of Code: ")
+	//	println(ofcode)
+	//	print("ll stat: ")
+	//	println(ss.LiteralLengthsFSEDecodingTable.GetState())
+	//	print("ll Code: ")
+	//	println(llcode)
+	//	print("ml stat: ")
+	//	println(ss.MatchLengthsFSEDecodingTable.GetState())
+	//	print("ml Code: ")
+	//	println(mlcode)
+	//	println("")
+	//}
 
 	bitsRead := 0
 
@@ -112,12 +114,6 @@ func (ss *SequencesSection) DecodeSequence(source *bitstream.Reversebitstream) (
 	}
 	bitsRead += llextrabits
 	seq.LiteralLength = llcode + int(llextra)
-
-	//print(seq.Offset)
-	//print(" \t ")
-	//print(seq.MatchLength)
-	//print(" \t ")
-	//println(seq.LiteralLength)
 
 	return seq, bitsRead, nil
 }
@@ -317,10 +313,12 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 	case SymbolCompressionModeCompressed:
 		fset := fse.FSETable{}
 		bytesread, err := fset.ReadTabledescriptionFromBitstream(source)
+
 		if err != nil {
 			return bytesUsed, err
 		}
 		bytesUsed += bytesread
+
 		fset.BuildDecodingTable(nil, nil)
 		ss.OffsetsFSEDecodingTable = &fset
 	}

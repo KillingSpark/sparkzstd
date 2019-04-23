@@ -168,3 +168,62 @@ func TestReverseBitStream(t *testing.T) {
 		}
 	}
 }
+
+func TestEdges(t *testing.T) {
+	data := []byte{64, 58, 169, 224}
+	rbs := NewReversebitstream(data)
+
+	x, _ := rbs.Read(3)
+	if x != 7 {
+		panic(x)
+	}
+	x, _ = rbs.Read(4)
+	if x != 0 {
+		panic(x)
+	}
+	x, _ = rbs.Read(4)
+	if x != 5 {
+		panic(x)
+	}
+
+	//first byte and 3 bit
+
+	x, _ = rbs.Read(1)
+	if x != 0 {
+		panic("DD")
+	}
+	x, _ = rbs.Read(3)
+	if x != 4 {
+		panic("DD")
+	}
+	x, _ = rbs.Read(5)
+	if x != 19 {
+		panic("DD")
+	}
+
+	//second byte and 4 bit
+
+	x, _ = rbs.Read(1)
+	if x != 1 {
+		panic("DD")
+	}
+	x, _ = rbs.Read(3)
+	if x != 2 {
+		panic("DD")
+	}
+
+	//third byte
+
+	x, _ = rbs.Read(3)
+	if x != 2 {
+		panic("DD")
+	}
+	x, _ = rbs.Read(0)
+	if x != 0 {
+		panic("DD")
+	}
+	x, _ = rbs.Read(4)
+	if x != 0 {
+		panic("DD")
+	}
+}
