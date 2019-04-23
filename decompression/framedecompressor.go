@@ -209,7 +209,17 @@ func (fd *FrameDecompressor) DecodeNextBlock() error {
 		}
 	default:
 		//TODO implement RLE Blocks
-		panic("Not implemented type")
+		var b [1]byte
+		b[0], err = fd.source.ReadByte()
+		if err != nil {
+			return err
+		}
+		for i := uint64(0); i < fd.CurrentBlock.Header.BlockSize; i++ {
+			err = fd.decodebuffer.Push(b[:])
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
