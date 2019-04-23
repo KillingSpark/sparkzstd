@@ -2,6 +2,7 @@
 This is a decompressor for the Zstandard compression format [Original Documentation](https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md)
 
 This is still work in progress but it can already decompress some files correctly.
+While it is still WIP I would actually call this at least in an alpha stage. It can decompress many files correctly and only weird edge cases come up. Those have not yet failed silently and giving corrupted output but rather fail at detection so you will most likely not end up with wrongly decompressed files.
 
 ## If you want to help test this
 I'd love some others to test this library. The workflow I use is:

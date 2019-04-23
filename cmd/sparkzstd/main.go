@@ -6,7 +6,6 @@ import (
 	"github.com/killingspark/sparkzsdt/decompression"
 	"io"
 	"os"
-	"runtime/pprof"
 	"time"
 )
 
