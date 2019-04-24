@@ -24,7 +24,10 @@ type SequencesSection struct {
 	Sequences []Sequence `json:"-"`
 }
 
-type RepeatingDecodingTable byte
+type RepeatingDecodingTable struct {
+	value          byte
+	additionalBits int
+}
 
 type DecodingTable interface {
 	DecodeSymbol(src *bitstream.Reversebitstream) (symbol int, bitsRead int, err error)
@@ -37,16 +40,16 @@ type DecodingTable interface {
 }
 
 func (rdc *RepeatingDecodingTable) DecodeSymbol(src *bitstream.Reversebitstream) (symbol int, bitsRead int, err error) {
-	return int(*rdc), 0, nil
+	return int(rdc.value), 0, nil
 }
 func (rdc *RepeatingDecodingTable) NextState(src *bitstream.Reversebitstream) (int, error) {
 	return 0, nil
 }
 func (rdc *RepeatingDecodingTable) PeekSymbol() (int, error) {
-	return int(*rdc), nil
+	return int(rdc.value), nil
 }
 func (rdc *RepeatingDecodingTable) GetAdditionalBits() (int, error) {
-	return int(fse.MatchLengthsExtraBits[int(*rdc)]), nil
+	return rdc.additionalBits, nil
 }
 func (rdc *RepeatingDecodingTable) GetNumberOfBits() (int, error) {
 	return 0, nil
@@ -74,21 +77,19 @@ func (ss *SequencesSection) DecodeSequence(source *bitstream.Reversebitstream) (
 		return seq, 0, err
 	}
 
-	//	if common.BlockCount == 3459 {
-	//	print("of stat: ")
-	//	println(ss.OffsetsFSEDecodingTable.GetState())
-	//	print("of Code: ")
-	//	println(ofcode)
-	//	print("ll stat: ")
-	//	println(ss.LiteralLengthsFSEDecodingTable.GetState())
-	//	print("ll Code: ")
-	//	println(llcode)
-	//	print("ml stat: ")
-	//	println(ss.MatchLengthsFSEDecodingTable.GetState())
-	//	print("ml Code: ")
-	//	println(mlcode)
-	//	println("")
-	//}
+	//print("of stat: ")
+	//println(ss.OffsetsFSEDecodingTable.GetState())
+	//print("of Code: ")
+	//println(ofcode)
+	//print("ll stat: ")
+	//println(ss.LiteralLengthsFSEDecodingTable.GetState())
+	//print("ll Code: ")
+	//println(llcode)
+	//print("ml stat: ")
+	//println(ss.MatchLengthsFSEDecodingTable.GetState())
+	//print("ml Code: ")
+	//println(mlcode)
+	//println("")
 
 	bitsRead := 0
 
@@ -281,7 +282,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 			return bytesUsed, err
 		}
 		bytesUsed++
-		rdc := RepeatingDecodingTable(b)
+		rdc := RepeatingDecodingTable{value: byte(fse.LiteralLengthBaseValueTranslation[b]), additionalBits: int(fse.LiteralLengthExtraBits[b])}
 		ss.LiteralLengthsFSEDecodingTable = &rdc
 	case SymbolCompressionModeRepeat:
 		ss.LiteralLengthsFSEDecodingTable = previousBlock.Sequences.LiteralLengthsFSEDecodingTable
@@ -310,7 +311,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 			return bytesUsed, err
 		}
 		bytesUsed++
-		rdc := RepeatingDecodingTable(b)
+		rdc := RepeatingDecodingTable{value: b, additionalBits: 0}
 		ss.OffsetsFSEDecodingTable = &rdc
 	case SymbolCompressionModeRepeat:
 		ss.OffsetsFSEDecodingTable = previousBlock.Sequences.OffsetsFSEDecodingTable
@@ -342,7 +343,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 			return bytesUsed, err
 		}
 		bytesUsed++
-		rdc := RepeatingDecodingTable(b)
+		rdc := RepeatingDecodingTable{value: byte(fse.MatchLengthBaseValueTranslation[b]), additionalBits: int(fse.MatchLengthsExtraBits[b])}
 		ss.MatchLengthsFSEDecodingTable = &rdc
 	case SymbolCompressionModeRepeat:
 		ss.MatchLengthsFSEDecodingTable = previousBlock.Sequences.MatchLengthsFSEDecodingTable
@@ -434,7 +435,9 @@ func (ss *SequencesSection) DecodeNextSequenceSection(source *bufio.Reader, byte
 		bytesUsed++
 	}
 
-	if bytesUsed != len(ss.Data) {
+	if bytesUsed < len(ss.Data) {
+		print("bytesUsed: ")
+		println(bits)
 		return ErrNotAllBytesUsedWhileSequenceDecoding
 	}
 

@@ -255,6 +255,7 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 		if err != nil {
 			return err
 		}
+
 		ls.DecodingTable, err = ls.TreeDesc.Build()
 		if err != nil {
 			return err
@@ -262,24 +263,24 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 
 		ls.Header.CompressedSize -= bytes
 		ls.BytesUsedByTree = bytes
+	}
 
-		//either == 1 or == 4
-		if ls.Header.NumberOfStreams == 4 {
-			// need to read jumptable --> 6 bytes
-			needed := 6
-			for n := 0; n < needed; _ = n {
-				x, err := source.Read(headerbuffer[n:needed])
-				ls.Header.BytesUsedByHeader += x
-				n += x
+	//either == 1 or == 4
+	if ls.Header.NumberOfStreams == 4 {
+		// need to read jumptable --> 6 bytes
+		needed := 6
+		for n := 0; n < needed; _ = n {
+			x, err := source.Read(headerbuffer[n:needed])
+			ls.Header.BytesUsedByHeader += x
+			n += x
 
-				if err != nil {
-					return err
-				}
+			if err != nil {
+				return err
 			}
-			ls.Header.DecodeJumpTable(headerbuffer[0:6])
-
-			ls.Header.CompressedSize -= 6
 		}
+		ls.Header.DecodeJumpTable(headerbuffer[0:6])
+
+		ls.Header.CompressedSize -= 6
 	}
 
 	//read the data for this literals section

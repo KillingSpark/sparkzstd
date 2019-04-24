@@ -225,7 +225,7 @@ func (ht *HuffmanDecodingTable) DecodeStream(data, output []byte) (int, error) {
 	var err error
 	//need to read bits from the stream (the back of the data...) until the first 1 arrives
 	x := uint64(0)
-	for x == 0 {
+	for x == 0 && bitsum <= 8 {
 		x, err = bitsrc.Read(1)
 		if err != nil {
 			return 0, err

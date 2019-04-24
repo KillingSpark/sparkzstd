@@ -17,7 +17,7 @@ type FrameReader struct {
 func NewFrameReader(source io.Reader) (*FrameReader, error) {
 	fr := &FrameReader{}
 	fr.fd = NewFrameDecompressor(source, &fr.buffer)
-	//fr.fd.Verbose = true
+	fr.fd.Verbose = true
 	err := fr.fd.CheckMagicnum()
 	if err != nil {
 		return nil, err
