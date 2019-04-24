@@ -223,11 +223,13 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 		return err
 	}
 
-	x, err := io.ReadFull(source, headerbuffer[1:needed])
-	ls.Header.BytesUsedByHeader += x
+	if needed > 1 {
+		x, err := io.ReadFull(source, headerbuffer[1:needed])
+		ls.Header.BytesUsedByHeader += x
 
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	err = ls.Header.DecodeSizes(headerbuffer[:needed])
@@ -281,7 +283,6 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 
 	_, err = io.ReadFull(source, ls.Data)
 	if err != nil {
-		println("Error while reading literals section data")
 		return err
 	}
 

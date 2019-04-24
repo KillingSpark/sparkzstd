@@ -95,6 +95,7 @@ func (htd *HuffmanTreeDesc) DecodeFromStream(source *bufio.Reader) (int, error) 
 				if err != nil {
 					return i / 2, err
 				}
+				bytesRead++
 				htd.Weights[i] = buf >> 4
 			} else {
 				htd.Weights[i] = buf & 0xF
@@ -252,11 +253,6 @@ func (ht *HuffmanDecodingTable) DecodeStream(data, output []byte) (int, error) {
 		}
 		output[i] = byte(symbol)
 		totalOutput++
-		//if i > 14193 {
-		//	print(i)
-		//	print(", ")
-		//	println(ht.State)
-		//}
 	}
 	if bitsrc.BitsStillInStream()+1 != -ht.MaxBits {
 		println(bitsrc.BitsStillInStream() + 1)
