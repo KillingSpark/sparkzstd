@@ -115,7 +115,12 @@ func (lsh *LiteralSectionHeader) DecodeSizes(raw []byte) error {
 		}
 
 		//for convenience
-		lsh.CompressedSize = lsh.RegeneratedSize
+		if lsh.Type == LiteralsBlockTypeRaw {
+			lsh.CompressedSize = lsh.RegeneratedSize
+		}
+		if lsh.Type == LiteralsBlockTypeRLE {
+			lsh.CompressedSize = 1
+		}
 	} else {
 		//normally there are 4 streams
 		lsh.NumberOfStreams = 4
@@ -257,28 +262,28 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 
 		ls.Header.CompressedSize -= bytes
 		ls.BytesUsedByTree = bytes
-	}
 
-	//either == 1 or == 4
-	if ls.Header.NumberOfStreams == 4 {
-		// need to read jumptable --> 6 bytes
-		needed := 6
-		for n := 0; n < needed; _ = n {
-			x, err := source.Read(headerbuffer[n:needed])
-			ls.Header.BytesUsedByHeader += x
-			n += x
+		//either == 1 or == 4
+		if ls.Header.NumberOfStreams == 4 {
+			// need to read jumptable --> 6 bytes
+			needed := 6
+			for n := 0; n < needed; _ = n {
+				x, err := source.Read(headerbuffer[n:needed])
+				ls.Header.BytesUsedByHeader += x
+				n += x
 
-			if err != nil {
-				return err
+				if err != nil {
+					return err
+				}
 			}
-		}
-		ls.Header.DecodeJumpTable(headerbuffer[0:6])
+			ls.Header.DecodeJumpTable(headerbuffer[0:6])
 
-		ls.Header.CompressedSize -= 6
+			ls.Header.CompressedSize -= 6
+		}
 	}
 
 	//read the data for this literals section
-	needed = ls.Header.CompressedSize // compressed size ==regenerated size if not actually compressed
+	needed = ls.Header.CompressedSize // compressed size ==regenerated size if not actually compressed, or 1 if RLE
 	ls.Data = make([]byte, needed)
 
 	_, err = io.ReadFull(source, ls.Data)
@@ -382,6 +387,15 @@ func (ls *LiteralSection) Read(target []byte) (int, error) {
 
 	//TODO decode huffman on the fly instead of before hand
 	//might be an overomptimization. Blocks can be only 128kb big anyways...
+
+	if ls.Header.Type == LiteralsBlockTypeRLE {
+		for i := range target {
+			target[i] = ls.Data[0]
+		}
+		ls.dataRead += len(target)
+		return len(target), nil
+	}
+
 	if ls.dataRead == len(ls.Data) {
 		return 0, io.EOF
 	}
@@ -396,5 +410,12 @@ func (ls *LiteralSection) Read(target []byte) (int, error) {
 }
 
 func (ls *LiteralSection) GetRest() []byte {
+	if ls.Header.Type == LiteralsBlockTypeRLE {
+		buf := make([]byte, ls.Header.RegeneratedSize-ls.dataRead)
+		for i := range buf {
+			buf[i] = ls.Data[0]
+		}
+		return buf
+	}
 	return ls.Data[ls.dataRead:]
 }
