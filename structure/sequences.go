@@ -46,7 +46,7 @@ func (rdc *RepeatingDecodingTable) PeekSymbol() (int, error) {
 	return int(*rdc), nil
 }
 func (rdc *RepeatingDecodingTable) GetAdditionalBits() (int, error) {
-	return 0, nil
+	return int(fse.MatchLengthsExtraBits[int(*rdc)]), nil
 }
 func (rdc *RepeatingDecodingTable) GetNumberOfBits() (int, error) {
 	return 0, nil
@@ -163,6 +163,13 @@ func (ss *SequencesSection) DecodeSequences() (int, error) {
 		}
 		bitsRead += bits
 
+		//print(ss.Sequences[i].LiteralLength)
+		//print(" ")
+		//print(ss.Sequences[i].MatchLength)
+		//print(" ")
+		//print(ss.Sequences[i].Offset)
+		//println(" ")
+
 		//dont update on the last index.
 		if i < ss.Header.NumberOfSequences-1 {
 			bits, err := ss.LiteralLengthsFSEDecodingTable.NextState(bitsrc)
@@ -214,7 +221,7 @@ type SequencesSectionHeader struct {
 }
 
 func (ssh *SequencesSectionHeader) DecodeSymbolCompressionModes(raw byte) {
-	ssh.LiteralsLengthMode = SymbolCompressionMode(raw >> 6)
+	ssh.LiteralsLengthMode = SymbolCompressionMode(raw>>6) & 0x3
 	ssh.OffsetsMode = SymbolCompressionMode(raw>>4) & 0x3
 	ssh.MatchLengthsMode = SymbolCompressionMode(raw>>2) & 0x3
 }
@@ -330,10 +337,13 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 	case SymbolCompressionModeRLE:
 		bytesUsed++
 		//read the byte that should be repeated
-		_, err := source.ReadByte()
+		b, err := source.ReadByte()
 		if err != nil {
 			return bytesUsed, err
 		}
+		bytesUsed++
+		rdc := RepeatingDecodingTable(b)
+		ss.MatchLengthsFSEDecodingTable = &rdc
 	case SymbolCompressionModeRepeat:
 		ss.MatchLengthsFSEDecodingTable = previousBlock.Sequences.MatchLengthsFSEDecodingTable
 		if previousBlock.Sequences.MatchLengthsFSEDecodingTable == nil {
