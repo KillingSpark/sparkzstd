@@ -38,6 +38,8 @@ func DoDecoding(r io.Reader) int64 {
 	return int64(outfile.N)
 }
 
+var diffs []string
+
 func CompareWithFile(original string, compressed *os.File) int64 {
 	origfile, err := os.Open(original)
 	if err != nil {
@@ -49,11 +51,12 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 	if err != nil {
 		panic(err.Error())
 	}
-	comp.PrintStatus = true
+	//comp.PrintStatus = true
 	compReader := bufio.NewReader(comp)
 
 	differences := false
 
+	lastIndexDiff := false
 	i := 0
 	for i = 0; true; i++ {
 		b1, err1 := origReader.ReadByte()
@@ -64,6 +67,7 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 			println("##################")
 			if differences {
 				println("###  Diffs    ####")
+				diffs = append(diffs, original)
 			} else {
 				println("###  Success  ####")
 			}
@@ -71,17 +75,26 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 			break
 		}
 		if err1 != nil {
-			panic(err1.Error())
+			diffs = append(diffs, original+" Err: "+err1.Error())
+			break
 		}
 		if err2 != nil {
-			panic(err2.Error())
+			diffs = append(diffs, original+" Err: "+err2.Error())
+			break
 		}
 
 		if b1 != b2 {
+			if !lastIndexDiff {
+				println("")
+			}
 			fmt.Printf("%d\t%d\t%d\n", i, b1, b2)
 			differences = true
+			lastIndexDiff = true
+		} else {
+			lastIndexDiff = false
 		}
 	}
+
 	return int64(i)
 }
 
@@ -119,6 +132,17 @@ func main() {
 		timeUsed := time.Now().Sub(startT)
 
 		seconds += timeUsed.Seconds()
+	}
+
+	if len(diffs) > 0 {
+		println("Found diffs in files: ")
+		for _, f := range diffs {
+			println(f)
+		}
+		println("###########")
+	} else {
+		println("")
+		println("Found no diffs in any files! Good job you!")
 	}
 
 	bytesPerSecond := float64(bytes) / seconds
