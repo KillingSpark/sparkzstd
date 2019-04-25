@@ -42,10 +42,11 @@ I am testing this on a few files right know
 1. Tested all files from the Canterbury corpus from here http://corpus.canterbury.ac.nz/descriptions/#cantrbry . They decompress correctly
 1. Tested all (the one pi.txt) files from the Miscellaneous corpus from here http://corpus.canterbury.ac.nz/descriptions/#misc . They decompress correctly
 1. A bigger file that klauspost (see https://github.com/klauspost/compress/tree/zstd-decoder/zstd) uses to test his implementation decodes correctly. It had an edge case that I didnt account for. So thanks to Klaus for unveiling that bug!
+1. Most of the files in decodecourpus_files decode correctly
 
 ### Not working
 1. Another larger file (tar archive of some parts of my $HOME which I cant upload here) wont decompress. (Probably) At some point the decoder doesnt read the correct amount of bytes (which is unlikely because I check in many places for correctness of amounts read/decoded etc). It finds a block with the "reserved" block type 3. I tested just discarding the block but that just fails at the next block.
-2. Most of the added decodecorpus files dont decompress. I will apparently need to hunt bugs in my huffman implementation.
+2. One of the added decodecorpus files does not decompress correctly. Some sequences get decoded wrongly (but apparently all errors cancel out length wise, this made me look through most of everything else because I assumed the lenghtes were correct). I will apparently need to hunt bugs in my huffman implementation.
 
 ## Other Libaries
 1. Some work has been done here towards a pure go implementation: https://github.com/klauspost/compress/tree/zstd-decoder/zstd Sadly I didnt find the project before I Started on this one.
