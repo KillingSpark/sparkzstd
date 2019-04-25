@@ -254,8 +254,8 @@ func (fset *FSETable) InitState(src *bitstream.Reversebitstream) (int, error) {
 
 var ErrNoSymbolForState = errors.New("Probably a bad state?")
 
-func (fset *FSETable) GetAdditionalBits() (int, error) {
-	return int(fset.DecodingTable[fset.State].NumberOfAdditionalBits), nil
+func (fset *FSETable) GetAdditionalBits() int {
+	return int(fset.DecodingTable[fset.State].NumberOfAdditionalBits)
 }
 func (fset *FSETable) GetNumberOfBits() (int, error) {
 	return int(fset.DecodingTable[fset.State].NumberOfBits), nil

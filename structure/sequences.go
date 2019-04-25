@@ -33,7 +33,7 @@ type DecodingTable interface {
 	DecodeSymbol(src *bitstream.Reversebitstream) (symbol int, bitsRead int, err error)
 	NextState(src *bitstream.Reversebitstream) (int, error)
 	PeekSymbol() (int, error)
-	GetAdditionalBits() (int, error)
+	GetAdditionalBits() int
 	GetNumberOfBits() (int, error)
 	InitState(src *bitstream.Reversebitstream) (int, error)
 	GetState() int
@@ -48,8 +48,8 @@ func (rdc *RepeatingDecodingTable) NextState(src *bitstream.Reversebitstream) (i
 func (rdc *RepeatingDecodingTable) PeekSymbol() (int, error) {
 	return int(rdc.value), nil
 }
-func (rdc *RepeatingDecodingTable) GetAdditionalBits() (int, error) {
-	return rdc.additionalBits, nil
+func (rdc *RepeatingDecodingTable) GetAdditionalBits() int {
+	return rdc.additionalBits
 }
 func (rdc *RepeatingDecodingTable) GetNumberOfBits() (int, error) {
 	return 0, nil
@@ -83,13 +83,16 @@ func (ss *SequencesSection) DecodeSequence(source *bitstream.Reversebitstream) (
 	//println(ofcode)
 	//print("ll stat: ")
 	//println(ss.LiteralLengthsFSEDecodingTable.GetState())
+	//print("ll bits: ")
+	//println(ss.LiteralLengthsFSEDecodingTable.GetAdditionalBits())
 	//print("ll Code: ")
 	//println(llcode)
 	//print("ml stat: ")
 	//println(ss.MatchLengthsFSEDecodingTable.GetState())
+	//print("ml bits: ")
+	//println(ss.MatchLengthsFSEDecodingTable.GetAdditionalBits())
 	//print("ml Code: ")
 	//println(mlcode)
-	//println("")
 
 	bitsRead := 0
 
@@ -100,7 +103,7 @@ func (ss *SequencesSection) DecodeSequence(source *bitstream.Reversebitstream) (
 	bitsRead += ofcode
 	seq.Offset = (1 << uint(ofcode)) + int(offset)
 
-	mlextrabits, _ := ss.MatchLengthsFSEDecodingTable.GetAdditionalBits()
+	mlextrabits := ss.MatchLengthsFSEDecodingTable.GetAdditionalBits()
 	mlextra, err := source.Read(mlextrabits)
 	if err != nil {
 		return seq, bitsRead, err
@@ -108,7 +111,7 @@ func (ss *SequencesSection) DecodeSequence(source *bitstream.Reversebitstream) (
 	bitsRead += mlextrabits
 	seq.MatchLength = mlcode + int(mlextra)
 
-	llextrabits, _ := ss.LiteralLengthsFSEDecodingTable.GetAdditionalBits()
+	llextrabits := ss.LiteralLengthsFSEDecodingTable.GetAdditionalBits()
 	llextra, err := source.Read(llextrabits)
 	if err != nil {
 		return seq, bitsRead, err
@@ -169,7 +172,7 @@ func (ss *SequencesSection) DecodeSequences() (int, error) {
 		//print(ss.Sequences[i].MatchLength)
 		//print(" ")
 		//print(ss.Sequences[i].Offset)
-		//println(" ")
+		//println("\n")
 
 		//dont update on the last index.
 		if i < ss.Header.NumberOfSequences-1 {
@@ -190,7 +193,8 @@ func (ss *SequencesSection) DecodeSequences() (int, error) {
 			}
 		}
 	}
-	if bitsrc.BitsStillInStream() >= 0 {
+
+	if bitsrc.BitsStillInStream() != -1 {
 		print("Bits originally in stream: ")
 		println(len(bitsrc.Data) * 8)
 		print("Bits still in stream: ")
@@ -336,7 +340,6 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 		bytesUsed += 0
 		ss.MatchLengthsFSEDecodingTable = fse.BuildMatchLengthsTable()
 	case SymbolCompressionModeRLE:
-		bytesUsed++
 		//read the byte that should be repeated
 		b, err := source.ReadByte()
 		if err != nil {

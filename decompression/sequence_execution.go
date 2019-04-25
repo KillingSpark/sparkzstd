@@ -19,6 +19,7 @@ func (fd *FrameDecompressor) ExecuteSequences() error {
 		if seq.LiteralLength > 0 {
 			lbuf := fd.literalsCopyBuf[:seq.LiteralLength]
 			n, err := fd.CurrentBlock.Literals.Read(lbuf)
+
 			if err != nil {
 				return err
 			}
@@ -32,11 +33,19 @@ func (fd *FrameDecompressor) ExecuteSequences() error {
 			}
 		}
 
+		//print(seq.LiteralLength)
+		//print("/")
+		//print(seq.MatchLength)
+		//print("/")
+		//println(seq.Offset)
+
 		//offset & match
 		offset := fd.nextOffset(seq) //updates offset history
-		err := fd.decodebuffer.RepeatBeforeIndex(int(seq.MatchLength), int(offset))
-		if err != nil {
-			return err
+		if seq.MatchLength > 0 {
+			err := fd.decodebuffer.RepeatBeforeIndex(int(seq.MatchLength), int(offset))
+			if err != nil {
+				return err
+			}
 		}
 
 		totalOutput += seq.LiteralLength
