@@ -12,8 +12,9 @@ type Ringbuffer struct {
 
 	allDirty bool
 
-	offset int
-	Len    int
+	offset       int   //index where the next write will happen > (index of last written byte + 1) mod Len
+	VirtualIndex int64 //if this wasnt a ringbuffer but a long slice, this is the current index
+	Len          int
 
 	Dump   io.Writer
 	dumped int
@@ -21,7 +22,15 @@ type Ringbuffer struct {
 
 //NewRingbuffer creates a new Ringbuffer with the appropriatly sized buffer
 func NewRingbuffer(n int, dump io.Writer) *Ringbuffer {
-	return &Ringbuffer{data: make([]byte, n), repeatBuf: make([]byte, n), offset: 0, Len: n, Dump: dump, allDirty: false}
+	return &Ringbuffer{
+		data:         make([]byte, n),
+		repeatBuf:    make([]byte, n),
+		offset:       0,
+		Len:          n,
+		Dump:         dump,
+		allDirty:     false,
+		VirtualIndex: -1,
+	}
 }
 
 //ErrIdxOutOfBounds is returned if Get(X) x is bigger than rb.Len
@@ -76,6 +85,7 @@ func (rb *Ringbuffer) dumpAllDirty() error {
 
 //Push appends the new Data at the "end" of the buffer and dumps everything that would have been overwritten
 func (rb *Ringbuffer) Push(newdata []byte) error {
+	rb.VirtualIndex += int64(len(newdata))
 
 	//deal with really large new data. Should not happen in zstd context
 	if len(newdata) >= rb.Len {
@@ -107,11 +117,15 @@ func (rb *Ringbuffer) Push(newdata []byte) error {
 				return err
 			}
 		}
-		copy(rb.data[rb.offset:offsetLength], newdata)
+		target := rb.data[rb.offset:offsetLength]
+		copy(target, newdata)
 
 		rb.offset += len(newdata)
 		if rb.offset >= rb.Len {
 			rb.allDirty = true
+			if rb.offset > rb.Len {
+				panic("This should never happen")
+			}
 		}
 		rb.offset %= rb.Len
 		return nil
@@ -240,6 +254,7 @@ func (rb *Ringbuffer) RepeatBeforeIndex(n int, oldest int) error {
 				rb.allDirty = true
 			}
 		}
+		rb.VirtualIndex += int64(n)
 		return nil
 	}
 
@@ -274,7 +289,9 @@ var ErrDidntDumpAll = errors.New("Did not write all bytes. Output will likely be
 
 // write bytes in the specified range to the rb.Dump writer
 func (rb *Ringbuffer) dump(low, high int) error {
-	w, err := WriteFull(rb.Dump, rb.data[low:high])
+	toDump := rb.data[low:high]
+
+	w, err := WriteFull(rb.Dump, toDump)
 	if err != nil {
 		return err
 	}
