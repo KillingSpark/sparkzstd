@@ -309,15 +309,9 @@ func (fd *FrameDecompressor) DecodeFrameHeader() error {
 	}
 
 	headersize := int(windowdescriptorsize + dictIDsize + framecontentsize)
-
-	//read headersize many bytes to be able to decode the complete header
-	x := 0
-	for x < headersize {
-		read, err := fd.source.Read(fd.headerbuffer[x:headersize])
-		if err != nil {
-			return err
-		}
-		x += read
+	_, err = io.ReadFull(fd.source, fd.headerbuffer[:headersize])
+	if err != nil {
+		return err
 	}
 
 	buf := fd.headerbuffer[:headersize]
