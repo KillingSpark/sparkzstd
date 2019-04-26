@@ -250,20 +250,15 @@ func (fd *FrameDecompressor) decodeAllBlocks() error {
 //DecodeNextBlockHeader reads the next blockheader and swaps out previous block with currentblock
 func (fd *FrameDecompressor) DecodeNextBlockHeader() error {
 	buf := fd.headerbuffer[:3] //just need three bytes
-	n := 0
 
-	//read until all bytes are read
-	for n < 3 {
-		x, err := fd.source.Read(buf)
-		if err != nil {
-			return err
-		}
-		n += x
+	_, err := io.ReadFull(fd.source, buf)
+	if err != nil {
+		return err
 	}
 
 	//discard old block
 	newBlock := structure.Block{}
-	err := newBlock.DecodeHeader(buf)
+	err = newBlock.DecodeHeader(buf)
 
 	//carry over any decoding tables from the old current block
 	if fd.CurrentBlock.Sequences.LiteralLengthsFSEDecodingTable != nil {

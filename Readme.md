@@ -43,9 +43,9 @@ I am testing this on a few files right know
 1. Tested all (the one pi.txt) files from the Miscellaneous corpus from here http://corpus.canterbury.ac.nz/descriptions/#misc . They decompress correctly
 1. A bigger file that klauspost (see https://github.com/klauspost/compress/tree/zstd-decoder/zstd) uses to test his implementation decodes correctly. It had an edge case that I didnt account for. So thanks to Klaus for unveiling that bug!
 1. Most of the files in decodecourpus_files decode correctly
+1. (FIXED. Does now decode correctly) Another larger file (tar archive of some parts of my $HOME which I cant upload here) wont decompress. (Probably) At some point the decoder doesnt read the correct amount of bytes (which is unlikely because I check in many places for correctness of amounts read/decoded etc). It finds a block with the "reserved" block type 3. I tested just discarding the block but that just fails at the next block.
 
 ### Not working
-1. Another larger file (tar archive of some parts of my $HOME which I cant upload here) wont decompress. (Probably) At some point the decoder doesnt read the correct amount of bytes (which is unlikely because I check in many places for correctness of amounts read/decoded etc). It finds a block with the "reserved" block type 3. I tested just discarding the block but that just fails at the next block.
 2. Updated the decodecorpus files, now 100 files. 6 of those do not decode correctly.
 
 ## Other Libaries
