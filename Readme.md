@@ -1,8 +1,27 @@
 # Sparkzstd
 This is a decompressor for the Zstandard compression format [Original Documentation](https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md)
 
-This is still work in progress but it can already decompress some files correctly.
-While it is still WIP I would actually call this at least in an alpha stage. It can decompress many files correctly and only weird edge cases come up. Those have not yet failed silently and giving corrupted output but rather fail at detection so you will most likely not end up with wrongly decompressed files.
+It is working, tested on a lot (1000) of decodecorpus files (generated with the tool from the original zstd authors: https://github.com/facebook/zstd/tree/dev/tests). A few samples are in this repo for anyone who might be wanting to work on this and might  need something to do regression tests.
+
+
+## What are the goals of this project
+Well mainly I had some time on my hands and wanted to write something that might be useful to someone out there.
+The goal was to provide a io.Reader compatible API for reading zstd encoded data from a provided io.Reader.
+
+The original goal has been reached. Now I will maybe work on some optimizations. Some parts can be parallelized and some parts can 
+probably be written better. (Some clean up on eg. exported types and functions might be nice)
+
+Checksums should be supported, and maybe resetting the reader/decompressor so it can read a new frame without having to allocate a new one.
+
+## How do I use this?
+There are two things this libary primarly provides to users. 
+
+Firstly an io.Reader compatible "FrameReader". It is created by calling "NewFrameReader(r)" which accepts any io.Reader. This reader can be for example a file that contains a zstd-Frame, or a tcp connection that receives a zstd frame.
+
+Secondly a FrameDecoder which acts a kind of pipe from a "source" io.Reader which writes the decoded zstd-frame into a "target" io.Writer.
+This is used by the framereader which uses a bytes.Buffer as "target" from which it serves the Read() calls.
+
+
 
 ## If you want to help test this
 I'd love some others to test this library. The workflow I use is:
@@ -17,10 +36,6 @@ eg: `go run cmd/sparkzstd/main.go ../testdata/pi.txt.zst`
 checks the decompression of ../testdata/pi.txt.zst against ../testdata/pi.txt
 
 If you'd like I would be glad to add your results to the list below.
-
-## What are the goals of this project
-Well mainly I had some time on my hands and wanted to write something that might be useful to someone out there.
-The goal is to provide a io.Reader compatible API for reading zstd encoded data from a provided io.Reader.
 
 ## Where do I find stuff
 1. Frame/Block/Literals/Sequences and their decoding is in /structure (Some HeaderDecoding is happening in the /decompression/framedecompressor.go)
@@ -44,14 +59,13 @@ I am testing this on a few files right know
 1. Tested all files from the Canterbury corpus from here http://corpus.canterbury.ac.nz/descriptions/#cantrbry . They decompress correctly
 1. Tested all (the one pi.txt) files from the Miscellaneous corpus from here http://corpus.canterbury.ac.nz/descriptions/#misc . They decompress correctly
 1. A bigger file that klauspost (see https://github.com/klauspost/compress/tree/zstd-decoder/zstd) uses to test his implementation decodes correctly. It had an edge case that I didnt account for. So thanks to Klaus for unveiling that bug!
-1. Most of the files in decodecourpus_files decode correctly
+1. All of the files in decodecourpus_files decode correctly
 1. (FIXED. Does now decode correctly) Another larger file (tar archive of some parts of my $HOME which I cant upload here) wont decompress. (Probably) At some point the decoder doesnt read the correct amount of bytes (which is unlikely because I check in many places for correctness of amounts read/decoded etc). It finds a block with the "reserved" block type 3. I tested just discarding the block but that just fails at the next block.
 
 ### Not working
-2. Updated the decodecorpus files, now 100 files. 6 of those do not decode correctly.
 
 ## Other Libaries
-1. Some work has been done here towards a pure go implementation: https://github.com/klauspost/compress/tree/zstd-decoder/zstd Sadly I didnt find the project before I Started on this one.
+1. Another pure go implementation (that got finished around the same time as mine): https://github.com/klauspost/compress/tree/master/zstd. Sadly I didnt find the project before I Started on this one.
 2. A wuff implementation is WIP here (but wuff doesnt generate Go correctly yet) https://github.com/mvdan/zstd
 3. A cgo binding to zsdt can be found here (which is needed if you want to compress stuff and not just decompress): https://github.com/DataDog/zstd 
 
