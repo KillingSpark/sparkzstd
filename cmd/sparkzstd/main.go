@@ -40,12 +40,15 @@ func DoDecoding(r io.Reader) int64 {
 }
 
 var diffs []string
+var errs []string
 
 func CompareWithFile(original string, compressed *os.File) int64 {
 	origfile, err := os.Open(original)
 	if err != nil {
 		panic(err.Error())
 	}
+	defer origfile.Close()
+
 	origReader := bufio.NewReader(origfile)
 
 	comp, err := decompression.NewFrameReader(compressed)
@@ -76,11 +79,11 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 			break
 		}
 		if err1 != nil {
-			diffs = append(diffs, original+" Err: "+err1.Error())
+			errs = append(errs, original+" Original-Read Err: "+err1.Error())
 			break
 		}
 		if err2 != nil {
-			diffs = append(diffs, original+" Err: "+err2.Error())
+			errs = append(errs, original+" Decompress-Read Err: "+err2.Error())
 			break
 		}
 
@@ -131,10 +134,14 @@ func main() {
 		bytes += CompareWithFile(original, file)
 		//bytes += DoDecoding(file)
 		timeUsed := time.Now().Sub(startT)
-
 		seconds += timeUsed.Seconds()
+		file.Close()
 	}
 
+	println("\n\n")
+	println("##################")
+	println("###  Summary  ####")
+	println("##################")
 	if len(diffs) > 0 {
 		println("Found diffs in files: ")
 		for _, f := range diffs {
@@ -144,6 +151,17 @@ func main() {
 	} else {
 		println("")
 		println("Found no diffs in any files! Good job you!")
+	}
+
+	if len(errs) > 0 {
+		println("Found unexpected errors in files: ")
+		for _, f := range errs {
+			println(f)
+		}
+		println("###########")
+	} else {
+		println("")
+		println("Found no unexpected errors in any files! Good job you!")
 	}
 
 	bytesPerSecond := float64(bytes) / seconds
