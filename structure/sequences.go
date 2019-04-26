@@ -25,7 +25,7 @@ type SequencesSection struct {
 }
 
 type RepeatingDecodingTable struct {
-	value          byte
+	value          int
 	additionalBits int
 }
 
@@ -46,7 +46,7 @@ func (rdc *RepeatingDecodingTable) NextState(src *bitstream.Reversebitstream) (i
 	return 0, nil
 }
 func (rdc *RepeatingDecodingTable) PeekSymbol() (int, error) {
-	return int(rdc.value), nil
+	return rdc.value, nil
 }
 func (rdc *RepeatingDecodingTable) GetAdditionalBits() int {
 	return rdc.additionalBits
@@ -286,7 +286,8 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 			return bytesUsed, err
 		}
 		bytesUsed++
-		rdc := RepeatingDecodingTable{value: byte(fse.LiteralLengthBaseValueTranslation[b]), additionalBits: int(fse.LiteralLengthExtraBits[b])}
+		byteToRepeat := fse.LiteralLengthBaseValueTranslation[b]
+		rdc := RepeatingDecodingTable{value: byteToRepeat, additionalBits: int(fse.LiteralLengthExtraBits[b])}
 		ss.LiteralLengthsFSEDecodingTable = &rdc
 	case SymbolCompressionModeRepeat:
 		ss.LiteralLengthsFSEDecodingTable = previousBlock.Sequences.LiteralLengthsFSEDecodingTable
@@ -315,7 +316,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 			return bytesUsed, err
 		}
 		bytesUsed++
-		rdc := RepeatingDecodingTable{value: b, additionalBits: 0}
+		rdc := RepeatingDecodingTable{value: int(b), additionalBits: 0}
 		ss.OffsetsFSEDecodingTable = &rdc
 	case SymbolCompressionModeRepeat:
 		ss.OffsetsFSEDecodingTable = previousBlock.Sequences.OffsetsFSEDecodingTable
@@ -346,7 +347,7 @@ func (ss *SequencesSection) DecodeTables(source *bufio.Reader, previousBlock *Bl
 			return bytesUsed, err
 		}
 		bytesUsed++
-		rdc := RepeatingDecodingTable{value: byte(fse.MatchLengthBaseValueTranslation[b]), additionalBits: int(fse.MatchLengthsExtraBits[b])}
+		rdc := RepeatingDecodingTable{value: fse.MatchLengthBaseValueTranslation[b], additionalBits: int(fse.MatchLengthsExtraBits[b])}
 		ss.MatchLengthsFSEDecodingTable = &rdc
 	case SymbolCompressionModeRepeat:
 		ss.MatchLengthsFSEDecodingTable = previousBlock.Sequences.MatchLengthsFSEDecodingTable

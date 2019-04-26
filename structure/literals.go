@@ -274,7 +274,6 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 		}
 		ls.Header.BytesUsedByHeader += 6
 		ls.Header.DecodeJumpTable(headerbuffer[0:6])
-
 		ls.Header.CompressedSize -= 6
 	}
 

@@ -55,7 +55,7 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 	if err != nil {
 		panic(err.Error())
 	}
-	comp.PrintStatus = true
+	//comp.PrintStatus = true
 	compReader := bufio.NewReader(comp)
 
 	differences := false
@@ -80,9 +80,15 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 		}
 		if err1 != nil {
 			errs = append(errs, original+" Original-Read Err: "+err1.Error())
+			if differences {
+				diffs = append(diffs, original)
+			}
 			break
 		}
 		if err2 != nil {
+			if differences {
+				diffs = append(diffs, original)
+			}
 			errs = append(errs, original+" Decompress-Read Err: "+err2.Error())
 			break
 		}
@@ -91,9 +97,10 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 			if !lastIndexDiff {
 				println("")
 			}
-			fmt.Printf("%d\t%d\t%d\n", i, b1, b2)
 			differences = true
 			lastIndexDiff = true
+			fmt.Printf("%d\t%d\t%d\n", i, b1, b2)
+			panic("A")
 		} else {
 			lastIndexDiff = false
 		}

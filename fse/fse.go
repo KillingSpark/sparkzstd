@@ -56,6 +56,10 @@ func (fset *FSETable) ReadTabledescriptionFromBitstream(source *bufio.Reader) (i
 		}
 		value := uint16(v)
 
+		//print(currentSymbol)
+		//print(", ")
+		//println(value)
+
 		lowermask := (uint16(1) << (BitsNeeded - 1)) - 1
 		thresh := (uint16(1) << (BitsNeeded)) - 1 - uint16((remaining + 1))
 
