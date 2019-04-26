@@ -6,6 +6,7 @@ import (
 	"github.com/killingspark/sparkzsdt/decompression"
 	"io"
 	"os"
+	//"runtime/pprof"
 	"time"
 )
 
@@ -51,7 +52,7 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 	if err != nil {
 		panic(err.Error())
 	}
-	//comp.PrintStatus = true
+	comp.PrintStatus = true
 	compReader := bufio.NewReader(comp)
 
 	differences := false
@@ -161,22 +162,6 @@ func main() {
 		}
 	}
 
-	return
-
-	file, err := os.Open("./../testingdata/bachelorarbeit.tar.zst")
-	//file, err := os.Open("./../testingdata/ubuntu.zst")
-	//file, err := os.Open("./Hexagon.jpg.zst")
-	//content, err := ioutil.ReadFile("./ubuntu.zst")
-	if err != nil {
-		panic(err.Error())
-	}
-
-	//buf := bytes.NewBuffer(content)
-	//DoDecoding(file)
-	//CompareWithFile("./../testingdata/ubuntu-18.04.2-live-server-amd64.iso", file)
-
-	//compares the output of the decompression byte for byte with the original file and produces output similarly
-	//to the "cmp" tool. If you want to disable the progress printing, delete the line "comp.PrintStatus = true"
-	CompareWithFile("./../testingdata/bachelorarbeit.tar", file)
 	//pprof.WriteHeapProfile(memprofiling)
+	return
 }
