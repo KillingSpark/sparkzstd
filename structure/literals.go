@@ -268,16 +268,11 @@ func (ls *LiteralSection) DecodeNextLiteralsSection(source *bufio.Reader, prevBl
 	//either == 1 or == 4
 	if ls.Header.NumberOfStreams == 4 {
 		// need to read jumptable --> 6 bytes
-		needed := 6
-		for n := 0; n < needed; _ = n {
-			x, err := source.Read(headerbuffer[n:needed])
-			ls.Header.BytesUsedByHeader += x
-			n += x
-
-			if err != nil {
-				return err
-			}
+		_, err := io.ReadFull(source, headerbuffer[:6])
+		if err != nil {
+			return err
 		}
+		ls.Header.BytesUsedByHeader += 6
 		ls.Header.DecodeJumpTable(headerbuffer[0:6])
 
 		ls.Header.CompressedSize -= 6
