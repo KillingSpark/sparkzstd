@@ -19,9 +19,16 @@ type FrameDecompressor struct {
 	//will be limited to the CurrentBlocks size and given to the decoding functions
 	limitedSource *io.LimitedReader
 
-	decodebuffer    *Ringbuffer //must be at least frame.Header.WindowSize long. Will be used in decoding the CurrentBlock
-	offsetHistory   [3]int64
+	decodebuffer  *Ringbuffer //must be at least frame.Header.WindowSize long. Will be used in decoding the CurrentBlock
+	offsetHistory [3]int64
+
+	//used in sequence execution
 	literalsCopyBuf [128 * 1024]byte //can only be max 128kb. Allocate here once instead of for every block
+
+	//used while decoding/decompressing literals and sequences sections
+	literalsDataBuf           [128 * 1024]byte //can only be max 128kb. Allocate here once instead of for every block
+	literalsCompressedDataBuf [128 * 1024]byte //can only be max 128kb. Allocate here once instead of for every block
+	sequencesDataBuf          [128 * 1024]byte //can only be max 128kb. Allocate here once instead of for every block
 
 	CurrentBlock  structure.Block
 	PreviousBlock structure.Block
@@ -273,6 +280,12 @@ func (fd *FrameDecompressor) DecodeNextBlockHeader() error {
 	if fd.CurrentBlock.Literals.DecodingTable != nil {
 		fd.PreviousBlock.Literals.DecodingTable = fd.CurrentBlock.Literals.DecodingTable
 	}
+
+	//carry over buffers for reuse
+	newBlock.Literals.CompressedData = fd.literalsCompressedDataBuf[:]
+	newBlock.Literals.Data = fd.literalsDataBuf[:]
+	newBlock.Sequences.Data = fd.sequencesDataBuf[:]
+
 	fd.CurrentBlock = newBlock
 	return err
 }

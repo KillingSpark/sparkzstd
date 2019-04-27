@@ -395,6 +395,7 @@ func (ss *SequencesSection) DecodeNextSequenceSection(source *bufio.Reader, byte
 	if buf[0] == 0 {
 		//the data in the literals section is the actual data, no sequences have been written
 		ss.Header.BytesUsedByHeader = 1
+		ss.Data = nil
 		return nil
 	}
 
@@ -417,7 +418,7 @@ func (ss *SequencesSection) DecodeNextSequenceSection(source *bufio.Reader, byte
 	bytesUsedInHeader += bytesUsedByTables
 
 	needed := bytesLeftInBlock - bytesUsedInHeader
-	ss.Data = make([]byte, needed)
+	ss.Data = ss.Data[:needed]
 	ss.Header.BytesUsedByHeader = bytesUsedInHeader
 
 	//read the rest of the data. It contains a bitsream that needs to be read "backwards" it needs to be read in full before
