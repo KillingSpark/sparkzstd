@@ -14,6 +14,10 @@ probably be written better. (Some clean up on eg. exported types and functions m
 Checksums should be supported, and maybe resetting the reader/decompressor so it can read a new frame without having to allocate a new one.
 
 ## How do I use this?
+
+You can use this a library in your own project. In cmd/* are different programs that make use of this library.
+
+### Library usage
 There are two things this libary primarly provides to users. 
 
 Firstly an io.Reader compatible "FrameReader". It is created by calling "NewFrameReader(r)" which accepts any io.Reader. This reader can be for example a file that contains a zstd-Frame, or a tcp connection that receives a zstd frame.
@@ -21,6 +25,15 @@ Firstly an io.Reader compatible "FrameReader". It is created by calling "NewFram
 Secondly a FrameDecoder which acts a kind of pipe from a "source" io.Reader which writes the decoded zstd-frame into a "target" io.Writer.
 This is used by the framereader which uses a bytes.Buffer as "target" from which it serves the Read() calls.
 
+### cmd/* programs and building
+Currently there is only cmd/sparkzstd which is used for testing (see below) decompression against original files. It can be built by 
+doing 
+```
+cd cmd/sparkzstd
+go build . 
+```
+
+I plan to implement an equivalent of `zstd -d` so you can use it as a drop in if you want.
 
 
 ## If you want to help test this
