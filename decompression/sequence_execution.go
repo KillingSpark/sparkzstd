@@ -2,7 +2,7 @@ package decompression
 
 import (
 	"errors"
-	"github.com/killingspark/sparkzsdt/structure"
+	"github.com/killingspark/sparkzstd/structure"
 )
 
 var counter = 0

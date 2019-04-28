@@ -3,8 +3,8 @@ package structure
 import (
 	"bufio"
 	"errors"
-	"github.com/killingspark/sparkzsdt/bitstream"
-	"github.com/killingspark/sparkzsdt/fse"
+	"github.com/killingspark/sparkzstd/bitstream"
+	"github.com/killingspark/sparkzstd/fse"
 	"io"
 )
 

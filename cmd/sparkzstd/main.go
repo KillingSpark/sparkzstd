@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/killingspark/sparkzsdt/decompression"
+	"github.com/killingspark/sparkzstd/decompression"
 	"io"
 	"os"
 	//"runtime/pprof"

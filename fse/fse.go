@@ -3,7 +3,7 @@ package fse
 import (
 	"bufio"
 	"errors"
-	"github.com/killingspark/sparkzsdt/bitstream"
+	"github.com/killingspark/sparkzstd/bitstream"
 	"io"
 )
 
