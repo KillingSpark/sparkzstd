@@ -39,6 +39,19 @@ type FrameDecompressor struct {
 	Verbose bool
 }
 
+func (fd *FrameDecompressor) Reset(newsource io.Reader, newtarget io.Writer) {
+	fd.source = bufio.NewReader(newsource)
+	fd.target = newtarget
+
+	fd.frame = structure.Frame{}
+	fd.limitedSource = nil
+	fd.decodebuffer = nil
+	fd.offsetHistory = [3]int64{1, 4, 8}
+	fd.CurrentBlock = structure.Block{}
+	fd.PreviousBlock = structure.Block{}
+	fd.BlockCounter = 0
+}
+
 //NewFrameDecompressor makes a new FrameDecompressor that reads compressed data from s and writes decompressed data to t
 func NewFrameDecompressor(s io.Reader, t io.Writer) *FrameDecompressor {
 	return &FrameDecompressor{
