@@ -41,6 +41,7 @@ func DoDecoding(r io.Reader) int64 {
 
 var diffs []string
 var errs []string
+var comp *decompression.FrameReader
 
 func CompareWithFile(original string, compressed *os.File) int64 {
 	origfile, err := os.Open(original)
@@ -50,12 +51,12 @@ func CompareWithFile(original string, compressed *os.File) int64 {
 	defer origfile.Close()
 
 	origReader := bufio.NewReader(origfile)
-
-	comp, err := decompression.NewFrameReader(compressed)
 	if err != nil {
 		panic(err.Error())
 	}
+
 	//comp.PrintStatus = true
+	err = comp.Reset(compressed)
 	compReader := bufio.NewReader(comp)
 
 	differences := false
@@ -121,6 +122,8 @@ func main() {
 	//if err != nil {
 	//	panic(err.Error())
 	//}
+
+	comp, _ = decompression.NewFrameReader(nil)
 
 	seconds := float64(0)
 	bytes := int64(0)

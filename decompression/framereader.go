@@ -18,16 +18,34 @@ func NewFrameReader(source io.Reader) (*FrameReader, error) {
 	fr := &FrameReader{}
 	fr.fd = NewFrameDecompressor(source, &fr.buffer)
 	//fr.fd.Verbose = true
-	err := fr.fd.CheckMagicnum()
-	if err != nil {
-		return nil, err
-	}
 
-	err = fr.fd.DecodeFrameHeader()
-	if err != nil {
-		return nil, err
+	if source != nil {
+		err := fr.fd.CheckMagicnum()
+		if err != nil {
+			return nil, err
+		}
+		err = fr.fd.DecodeFrameHeader()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return fr, nil
+}
+
+func (fr *FrameReader) Reset(source io.Reader) error {
+	fr.buffer.Reset()
+	fr.fd.Reset(source, &fr.buffer)
+	if source != nil {
+		err := fr.fd.CheckMagicnum()
+		if err != nil {
+			return err
+		}
+		err = fr.fd.DecodeFrameHeader()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (fr *FrameReader) Read(target []byte) (int, error) {
