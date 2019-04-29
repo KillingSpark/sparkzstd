@@ -45,7 +45,6 @@ func (fd *FrameDecompressor) Reset(newsource io.Reader, newtarget io.Writer) {
 
 	fd.frame = structure.Frame{}
 	fd.limitedSource = nil
-	fd.decodebuffer = nil
 	fd.offsetHistory = [3]int64{1, 4, 8}
 	fd.CurrentBlock = structure.Block{}
 	fd.PreviousBlock = structure.Block{}
@@ -361,7 +360,11 @@ func (fd *FrameDecompressor) DecodeFrameHeader() error {
 		}
 	}
 
-	fd.decodebuffer = NewRingbuffer(int(fd.frame.Header.WindowSize), fd.target)
+	if fd.decodebuffer == nil || fd.decodebuffer.Len < int(fd.frame.Header.WindowSize) {
+		fd.decodebuffer = NewRingbuffer(int(fd.frame.Header.WindowSize), fd.target)
+	} else {
+		fd.decodebuffer.Dump = fd.target
+	}
 
 	if fd.Verbose {
 		fd.printStatus()
