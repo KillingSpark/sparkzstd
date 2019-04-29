@@ -33,6 +33,21 @@ func NewRingbuffer(n int, dump io.Writer) *Ringbuffer {
 	}
 }
 
+func (rb *Ringbuffer) Reset(len int, dump io.Writer) {
+	if cap(rb.data) >= len {
+		rb.data = rb.data[:len]
+		rb.repeatBuf = rb.repeatBuf[:len]
+	} else {
+		rb.data = make([]byte, len)
+		rb.repeatBuf = make([]byte, len)
+	}
+	rb.offset = 0
+	rb.Len = len
+	rb.Dump = dump
+	rb.allDirty = false
+	rb.VirtualIndex = -1
+}
+
 //ErrIdxOutOfBounds is returned if Get(X) x is bigger than rb.Len
 var ErrIdxOutOfBounds = errors.New("Index is out of bounds")
 

@@ -360,10 +360,10 @@ func (fd *FrameDecompressor) DecodeFrameHeader() error {
 		}
 	}
 
-	if fd.decodebuffer == nil || fd.decodebuffer.Len < int(fd.frame.Header.WindowSize) {
+	if fd.decodebuffer == nil {
 		fd.decodebuffer = NewRingbuffer(int(fd.frame.Header.WindowSize), fd.target)
 	} else {
-		fd.decodebuffer.Dump = fd.target
+		fd.decodebuffer.Reset(int(fd.frame.Header.WindowSize), fd.target)
 	}
 
 	if fd.Verbose {
